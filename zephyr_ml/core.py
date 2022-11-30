@@ -27,8 +27,8 @@ _REGRESSION_METRICS = {
 _CLASSIFICATION_METRICS = {
     'accuracy': metrics.accuracy_score,
     'f1': metrics.f1_score,
-    'precision': metrics.precision_score,
     'recall': metrics.recall_score,
+    'precision': metrics.precision_score,
 }
 
 METRICS = _CLASSIFICATION_METRICS
@@ -111,7 +111,7 @@ class Zephyr:
         """
         return self._mlpipeline.predict(X)
 
-    def fit_detect(self, X: pd.DataFrame, y: Union[pd.Series, np.ndarray],
+    def fit_predict(self, X: pd.DataFrame, y: Union[pd.Series, np.ndarray],
                    **kwargs) -> pd.Series:
         """Fit the pipeline to the data and then predict targets.
 
@@ -142,7 +142,8 @@ class Zephyr:
         return result
 
     def evaluate(self, X: pd.DataFrame, y: Union[pd.Series, np.ndarray], fit: bool = False,
-                 train_data: pd.DataFrame = None, metrics: List[str] = METRICS) -> pd.Series:
+                 train_X: pd.DataFrame = None, train_y: Union[pd.Series, np.ndarray] = None, 
+                 metrics: List[str] = METRICS) -> pd.Series:
         """Evaluate the performance of the pipeline.
 
         Args:
@@ -155,10 +156,13 @@ class Zephyr:
             fit (bool):
                 Whether to fit the pipeline before evaluating it.
                 Defaults to ``False``.
-            train_data (DataFrame):
+            train_X (DataFrame):
                 Training data, passed as a ``pandas.DataFrame`` containing
                 the feature matrix.
                 If not given, the pipeline is fitted on ``X``.
+            train_y (Series or ndarray):
+                Target data used for training, passed as a ``pandas.Series`` or 
+                ``numpy.ndarray`` containing the target values.
             metrics (list):
                 List of metrics to used passed as a list of strings.
                 If not given, it defaults to all the metrics.
@@ -173,16 +177,18 @@ class Zephyr:
         else:
             if not self._fitted:
                 mlpipeline = self._get_mlpipeline()
+            else:
+                mlpipeline = self._mlpipeline
 
-            if train_data is not None:
+            if train_X is not None and train_y is not None:
                 # fit first and then predict
-                mlpipeline.fit(train_data)
+                mlpipeline.fit(train_X, train_y)
                 method = mlpipeline.predict
             else:
                 # fit and predict at once
-                method = partial(mlpipeline.fit, output_='default')
+                method = partial(mlpipeline.fit, y=y, output_='default')
 
-        result = method(method, data)
+        result = method(X)
 
         scores = {
             metric: METRICS[metric](y, result)
