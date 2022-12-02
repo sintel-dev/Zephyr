@@ -22,6 +22,8 @@ install_requires = [
     'pandas>=1,<2',
     'composeml>=0.1.6,<1.0',
     'featuretools>=1.0.0,<2.0.0',
+    'mlblocks>=0.4.0,<0.5',
+    'xgboost>=0.72.1,<1',
     'jupyter==1.0.0',
 ]
 
@@ -83,6 +85,12 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
     description='Prediction engineering methods for Draco.',
+    entry_points={
+        'mlblocks': [
+            'primitives=zephyr_ml:MLBLOCKS_PRIMITIVES',
+            'pipelines=zephyr_ml:MLBLOCKS_PIPELINES'
+        ],
+    },
     extras_require={
         'test': tests_require,
         'dev': development_requires + tests_require,
