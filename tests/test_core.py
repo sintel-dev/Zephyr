@@ -2,10 +2,9 @@ import os
 
 import numpy as np
 import pandas as pd
-from mlblocks import MLPipeline
-from mlblocks.discovery import load_pipeline
 
 from zephyr_ml.core import Zephyr
+
 
 class TestZephyr:
 

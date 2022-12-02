@@ -27,12 +27,12 @@ class FindThreshold:
 
     This is intended for classification problems.
 
-	Args:
+        Args:
         metric (str):
-        	String representing which metric to use.
+                String representing which metric to use.
     """
 
-    def __init__(self, metric='f1'):    
+    def __init__(self, metric='f1'):
         self._metric = 'f1'
         self._threshold = None
 
@@ -58,7 +58,6 @@ class FindThreshold:
 
         threshold = RANGE[np.argmax(values)]
         LOGGER.info(f'best threshold found at {threshold}')
-        print(threshold)
 
         self._threshold = threshold
 

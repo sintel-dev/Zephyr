@@ -112,7 +112,7 @@ class Zephyr:
         return self._mlpipeline.predict(X)
 
     def fit_predict(self, X: pd.DataFrame, y: Union[pd.Series, np.ndarray],
-                   **kwargs) -> pd.Series:
+                    **kwargs) -> pd.Series:
         """Fit the pipeline to the data and then predict targets.
 
         This method is functionally equivalent to calling ``fit(X, y)``
@@ -142,7 +142,7 @@ class Zephyr:
         return result
 
     def evaluate(self, X: pd.DataFrame, y: Union[pd.Series, np.ndarray], fit: bool = False,
-                 train_X: pd.DataFrame = None, train_y: Union[pd.Series, np.ndarray] = None, 
+                 train_X: pd.DataFrame = None, train_y: Union[pd.Series, np.ndarray] = None,
                  metrics: List[str] = METRICS) -> pd.Series:
         """Evaluate the performance of the pipeline.
 
@@ -161,7 +161,7 @@ class Zephyr:
                 the feature matrix.
                 If not given, the pipeline is fitted on ``X``.
             train_y (Series or ndarray):
-                Target data used for training, passed as a ``pandas.Series`` or 
+                Target data used for training, passed as a ``pandas.Series`` or
                 ``numpy.ndarray`` containing the target values.
             metrics (list):
                 List of metrics to used passed as a list of strings.
