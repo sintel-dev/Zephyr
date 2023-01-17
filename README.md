@@ -24,7 +24,7 @@ A machine learning library for assisting in the generation of machine learning p
  | ![][Slack Logo] **[Community]**    | Join our Slack Workspace for announcements and discussions.          |
 
  [Website]: https://sintel.dev/
- [Documentation]: https://sintel-dev.github.io/Zephyr
+ [Documentation]: https://dtail.gitbook.io/zephyr/
  [Repository]: https://github.com/sintel-dev/Zephyr
  [License]: https://github.com/sintel-dev/Zephyr/blob/master/LICENSE
  [Development Status]: https://pypi.org/search/?c=Development+Status+%3A%3A+2+-+Pre-Alpha
