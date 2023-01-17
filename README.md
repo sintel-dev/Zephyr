@@ -9,9 +9,7 @@
 <!--[![Travis CI Shield](https://travis-ci.org/signals-dev/zephyr.svg?branch=main)](https://travis-ci.org/signals-dev/zephyr)-->
 <!--[![Coverage Status](https://codecov.io/gh/signals-dev/zephyr/branch/main/graph/badge.svg)](https://codecov.io/gh/signals-dev/zephyr)-->
 
-# Zephyr Prediction Engineering
-
-Prediction engineering methods for Zephyr.
+# Zephyr
 
 A machine learning library for assisting in the generation of machine learning problems for wind farms operations data by analyzing past occurrences of events.
 
