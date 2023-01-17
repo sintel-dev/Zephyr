@@ -13,7 +13,28 @@
 
 Prediction engineering methods for Zephyr.
 
-- Homepage: https://github.com/signals-dev/zephyr
+A machine learning library for assisting in the generation of machine learning problems for wind farms operations data by analyzing past occurrences of events.
+
+ | Important Links                     |                                                                      |
+ | ----------------------------------- | -------------------------------------------------------------------- |
+ | :computer: **[Website]**            | Check out the Sintel Website for more information about the project. |
+ | :book: **[Documentation]**          | Quickstarts, User and Development Guides, and API Reference.         |
+ | :star: **[Tutorials]**              | Checkout our notebooks                                               |
+ | :octocat: **[Repository]**          | The link to the Github Repository of this library.                   |
+ | :scroll: **[License]**              | The repository is published under the MIT License.                   |
+ | :keyboard: **[Development Status]** | This software is in its Pre-Alpha stage.                             |
+ | [![][Slack Logo] **Community**][Community]    | Join our Slack Workspace for announcements and discussions.          |
+
+ [Website]: https://sintel.dev/
+ [Documentation]: https://sintel-dev.github.io/Zephyr
+ [Tutorials]: 
+ [Repository]: https://github.com/sintel-dev/Zephyr
+ [License]: https://github.com/sintel-dev/Zephyr/blob/master/LICENSE
+ [Development Status]: https://pypi.org/search/?c=Development+Status+%3A%3A+2+-+Pre-Alpha
+ [Community]: https://join.slack.com/t/sintel-space/shared_invite/zt-q147oimb-4HcphcxPfDAM0O9_4PaUtw
+ [Slack Logo]: https://github.com/sintel-dev/Orion/blob/master/docs/images/slack.png
+
+ - Homepage: https://github.com/signals-dev/zephyr
 
 # Overview
 
