@@ -23,11 +23,10 @@ A machine learning library for assisting in the generation of machine learning p
  | :octocat: **[Repository]**          | The link to the Github Repository of this library.                   |
  | :scroll: **[License]**              | The repository is published under the MIT License.                   |
  | :keyboard: **[Development Status]** | This software is in its Pre-Alpha stage.                             |
- | [![][Slack Logo] **Community**][Community]    | Join our Slack Workspace for announcements and discussions.          |
+ | ![][Slack Logo] **[Community]**    | Join our Slack Workspace for announcements and discussions.          |
 
  [Website]: https://sintel.dev/
  [Documentation]: https://sintel-dev.github.io/Zephyr
- [Tutorials]: 
  [Repository]: https://github.com/sintel-dev/Zephyr
  [License]: https://github.com/sintel-dev/Zephyr/blob/master/LICENSE
  [Development Status]: https://pypi.org/search/?c=Development+Status+%3A%3A+2+-+Pre-Alpha
