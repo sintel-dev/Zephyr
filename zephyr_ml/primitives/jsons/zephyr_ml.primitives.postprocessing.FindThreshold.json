@@ -1,0 +1,49 @@
+{
+    "name": "zephyr_ml.primitives.postprocessing.FindThreshold",
+    "contributors": [
+        "Sarah Alnegheimish <smish@mit.edu>"
+    ],
+    "description": "Find the optimal threshold based on given metric.",
+    "classifiers": {
+        "type": "postprocessor",
+        "subtype": "feature_extractor"
+    },
+    "modalities": [],
+    "primitive": "zephyr_ml.primitives.postprocessing.FindThreshold",
+    "fit": {
+        "method": "fit",
+        "args": [
+            {
+                "name": "y_true",
+                "type": "ndarray"
+            },
+            {
+                "name": "y_pred",
+                "type": "ndarray"
+            }
+        ]
+    },
+    "produce": {
+        "method": "apply_threshold",
+        "args": [
+            {
+                "name": "y_pred",
+                "type": "ndarray"
+            }
+        ],
+        "output": [
+            {
+                "name": "y",
+                "type": "ndarray"
+            }
+        ]
+    },
+    "hyperparameters": {
+        "fixed": {
+            "metric": {
+                "type": "str",
+                "default": "f1"
+            }
+        }
+    }
+}
