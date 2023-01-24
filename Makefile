@@ -109,7 +109,8 @@ test-readme: ## run the readme snippets
 
 .PHONY: test-tutorials
 test-tutorials: ## run the tutorial notebooks
-	jupyter nbconvert --execute --ExecutePreprocessor.timeout=3600 --to=html --stdout notebooks/*.ipynb > /dev/null
+	find notebooks -path "*/.ipynb_checkpoints" -prune -false -o -name "*.ipynb" -exec \
+		jupyter nbconvert --execute --ExecutePreprocessor.timeout=3600 --to=html --stdout {} > /dev/null \;
 
 
 .PHONY: test
