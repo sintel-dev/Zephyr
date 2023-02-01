@@ -20,9 +20,9 @@ except IOError:
 install_requires = [
     'numpy>=1.16.0,<1.23.0',
     'pandas>=1,<2',
-    'composeml>=0.1.6,<1.0',
+    'composeml>=0.1.6,<0.10',
     'featuretools>=1.0.0,<2.0.0',
-    'mlblocks>=0.4.0,<0.5',
+    'mlblocks>=0.5.0,<0.6',
     'xgboost>=0.72.1,<1',
     'jupyter==1.0.0',
 ]
@@ -50,6 +50,7 @@ development_requires = [
     'Sphinx>=1.7.1,<3',
     'sphinx_rtd_theme>=0.2.4,<0.5',
     'autodocsumm>=0.1.10',
+    'mistune>=0.7,<2',
     'Jinja2<3.1',
 
     # style check

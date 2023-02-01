@@ -1,7 +1,9 @@
 import os
+import pickle
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from zephyr_ml.core import Zephyr
 
@@ -32,6 +34,28 @@ class TestZephyr:
     def setup(self):
         self.zephyr = Zephyr('xgb')
 
+    def test_hyperparameters(self):
+        hyperparameters = {
+            "xgboost.XGBClassifier#1": {
+                "max_depth": 2
+            },
+            "zephyr_ml.primitives.postprocessing.FindThreshold#1": {
+                "metric": "precision"
+            }
+        }
+
+        zephyr = Zephyr('xgb', hyperparameters)
+
+        assert zephyr._hyperparameters == hyperparameters
+
+    def test_json(self):
+        file = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        json_zephyr = Zephyr(os.path.join(file, 'zephyr_ml', 'pipelines', 'xgb.json'))
+
+        json_zephyr_hyperparameters = json_zephyr._mlpipeline.get_hyperparameters()
+        zephyr_hyperparameters = self.zephyr._mlpipeline.get_hyperparameters()
+        assert json_zephyr_hyperparameters == zephyr_hyperparameters
+
     def test_fit(self):
         self.zephyr.fit(self.train, self.train_y)
 
@@ -48,11 +72,20 @@ class TestZephyr:
         assert isinstance(predicted, list)
 
     def test_save_load(self, tmpdir):
-        path = os.path.join(tmpdir, 'some/path.pkl')
+        path = os.path.join(tmpdir, 'some_path.pkl')
         self.zephyr.save(path)
 
         new_zephyr = Zephyr.load(path)
         assert new_zephyr == self.zephyr
+
+    def test_load_failed(self, tmpdir):
+        path = os.path.join(tmpdir, 'some_path.pkl')
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'wb') as pickle_file:
+            pickle.dump("something", pickle_file)
+
+        with pytest.raises(ValueError):
+            Zephyr.load(path)
 
     def test_evaluate(self):
         self.zephyr.fit(self.test, self.test_y)
@@ -71,6 +104,23 @@ class TestZephyr:
             X=self.test,
             y=self.test_y,
             fit=True,
+        )
+
+        expected = pd.Series({
+            'accuracy': 1.0,
+            'f1': 1.0,
+            'recall': 1.0,
+            'precision': 1.0,
+        })
+        pd.testing.assert_series_equal(expected, scores)
+
+    def test_evaluate_previously_fitted_with_fit_true(self):
+        self.zephyr.fit(self.train, self.train_y)
+
+        scores = self.zephyr.evaluate(
+            X=self.test,
+            y=self.test_y,
+            fit=True
         )
 
         expected = pd.Series({

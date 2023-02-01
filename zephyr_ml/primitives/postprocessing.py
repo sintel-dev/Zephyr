@@ -27,9 +27,9 @@ class FindThreshold:
 
     This is intended for classification problems.
 
-        Args:
+    Args:
         metric (str):
-                String representing which metric to use.
+            String representing which metric to use.
     """
 
     def __init__(self, metric='f1'):
