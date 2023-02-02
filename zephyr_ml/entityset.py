@@ -73,6 +73,58 @@ def create_scada_entityset(dfs, new_kwargs_mapping=None):
     return es
 
 
+def _extract_timeseries_data(es, entity, index, remove):
+    df = es[entity]
+    df = df.drop(remove, axis=1, errors='ignore')
+    df = df.set_index(index) 
+    df = df.stack().reset_index()
+
+    df.columns = ['turbine_id', 'timestamp', 'signal_id', 'value']
+    return df
+
+
+def extract_pi_data(es):
+    '''Extract PI data from entityset.
+
+    Extract PI data from the given entityset and
+    format the data into signal, timestamp and valaues.
+
+    Args:
+        es (featuretools.EntitySet):
+            Entityset to extract PI data from.
+
+    Returns:
+        DataFrame:
+            Extracted PI data.
+    '''
+    entity = 'pidata'
+    index = ['COD_ELEMENT', 'time']
+    remove = ['_index', '__utctime', 'WTG']
+
+    return _extract_timeseries_data(es, entity, index, remove)
+
+
+def extract_scada_data(es):
+    '''Extract SCADA data from entityset.
+
+    Extract SCADA data from the given entityset and
+    format the data into signal, timestamp and valaues.
+
+    Args:
+        es (featuretools.EntitySet):
+            Entityset to extract SCADA data from.
+
+    Returns:
+        DataFrame:
+            Extracted SCADA data.
+    '''
+    entity = 'scada'
+    index = ['COD_ELEMENT', 'TIMESTAMP']
+    remove = ['_index', 'turbine']
+
+    return _extract_timeseries_data(es, entity, index, remove)
+
+
 def _validate_data(dfs, es_type, es_kwargs):
     '''Validate data by checking for required columns in each entity
     '''

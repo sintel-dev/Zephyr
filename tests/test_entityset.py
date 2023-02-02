@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from zephyr_ml import create_pidata_entityset, create_scada_entityset
+from zephyr_ml.entityset import extract_pi_data, extract_scada_data
 
 
 @pytest.fixture
@@ -217,3 +218,21 @@ def test_default_create_scada_entityset(scada_dfs):
     assert es.id == 'SCADA data'
     assert set(es.dataframe_dict.keys()) == set(
         ['alarms', 'turbines', 'stoppages', 'work_orders', 'notifications', 'scada'])
+
+
+def test_extract_pi_data(pidata_dfs):
+    es = create_pidata_entityset(pidata_dfs)
+
+    df = extract_pi_data(es)
+    assert df.shape == (4, 4)
+    assert list(df.columns) == ['turbine_id', 'timestamp', 'signal_id', 'value']
+
+
+def test_extract_scada_data(scada_dfs):
+    es = create_scada_entityset(scada_dfs)
+
+    df = extract_scada_data(es)
+    print(df)
+    assert df.shape == (4, 4)
+    assert list(df.columns) == ['turbine_id', 'timestamp', 'signal_id', 'value']
+
