@@ -76,7 +76,7 @@ def create_scada_entityset(dfs, new_kwargs_mapping=None):
 def _extract_timeseries_data(es, entity, index, remove):
     df = es[entity]
     df = df.drop(remove, axis=1, errors='ignore')
-    df = df.set_index(index) 
+    df = df.set_index(index)
     df = df.stack().reset_index()
 
     df.columns = ['turbine_id', 'timestamp', 'signal_id', 'value']

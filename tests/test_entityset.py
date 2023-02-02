@@ -235,4 +235,3 @@ def test_extract_scada_data(scada_dfs):
     print(df)
     assert df.shape == (4, 4)
     assert list(df.columns) == ['turbine_id', 'timestamp', 'signal_id', 'value']
-
