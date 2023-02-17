@@ -31,8 +31,8 @@
                 "variable": "zephyr_ml.primitives.postprocessing.FindThreshold#1.threshold"
             },
             {
-                "name": "predictions",
-                "variable": "zephyr_ml.primitives.postprocessing.FindThreshold#1.predictions"
+                "name": "scores",
+                "variable": "zephyr_ml.primitives.postprocessing.FindThreshold#1.scores"
             }
         ]
     }

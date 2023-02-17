@@ -41,7 +41,7 @@
                 "type": "float"
             },
             {
-                "name": "predictions",
+                "name": "scores",
                 "type": "ndarray"
             }
         ]
