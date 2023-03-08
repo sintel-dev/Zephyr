@@ -6,28 +6,28 @@ def process_signals(es, signal_dataframe_name, signal_column, transformations, a
     '''
     Process signals using SigPro.
 
-        Apply SigPro transformations and aggregations on the specified entity from the
-        given entityset. If ``replace_dataframe=True``, then the old entity will be updated.
+    Apply SigPro transformations and aggregations on the specified entity from the
+    given entityset. If ``replace_dataframe=True``, then the old entity will be updated.
 
     Args:
         es (featuretools.EntitySet):
-                Entityset to extract signals from.
+            Entityset to extract signals from.
         signal_dataframe_name (str):
-                Name of the dataframe in the entityset containing signal data to process.
+            Name of the dataframe in the entityset containing signal data to process.
         signal_column (str):
-                Name of column or containing signal values to apply signal processing pipeline to.
+            Name of column or containing signal values to apply signal processing pipeline to.
         transformations (list[dict]):
-                List of dictionaries containing the transformation primitives.
+            List of dictionaries containing the transformation primitives.
         aggregations (list[dict]):
-                List of dictionaries containing the aggregation primitives.
+            List of dictionaries containing the aggregation primitives.
         replace_dataframe (bool):
-                If ``True``, will replace the entire signal dataframe in the EntitySet with the
+            If ``True``, will replace the entire signal dataframe in the EntitySet with the
             processed signals. Defaults to ``False``, creating a new child dataframe containing
             processed signals with the suffix ``_processed``.
 
     Returns:
-                featuretools.EntitySet:
-                        Entityset with processed signals.
+        featuretools.EntitySet:
+            Entityset with processed signals.
     '''
     signal_df = es[signal_dataframe_name]
     time_index = signal_df.ww.time_index
