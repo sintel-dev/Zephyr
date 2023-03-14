@@ -91,7 +91,8 @@ class Zephyr:
 
         return outputs_spec, visual_names
 
-    def fit(self, X: pd.DataFrame, y: Union[pd.Series, np.ndarray], visual: bool = False, **kwargs):
+    def fit(self, X: pd.DataFrame, y: Union[pd.Series, np.ndarray],
+            visual: bool = False, **kwargs):
         """Fit the pipeline to the given data.
 
         Args:
@@ -138,7 +139,6 @@ class Zephyr:
             outputs_spec, visual_names = self._get_outputs_spec()
         else:
             outputs_spec = 'default'
-
 
         outputs = self._mlpipeline.predict(X, output_=outputs_spec, **kwargs)
 

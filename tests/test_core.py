@@ -92,7 +92,7 @@ class TestZephyr:
 
     def test_predict_no_visual(self):
         zephyr = Zephyr(['xgboost.XGBClassifier'])
-        
+
         zephyr.fit(self.train, self.train_y)
 
         predicted = zephyr.predict(self.test, visual=True)
