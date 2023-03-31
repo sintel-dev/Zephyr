@@ -175,10 +175,7 @@ working on a Machine Learning problem: the turbine ID (COD_ELEMENT), the cutoff 
 ```
 ## 4. Modeling
 
-Once we have the labels and the training data, we can train a model using the Zephyr interface where you can train, infer, and evaluate a pipeline. We use an xgb pipeline which consists of two primitives:
-
-        `xgboost.XGBClassifier`
-        `zephyr_ml.primitives.postprocessing.FindThreshold`
+Once we have the labels and the training data, we can train a model using the Zephyr interface where you can train, infer, and evaluate a pipeline. We use an xgb pipeline which consists of two primitives: `xgboost.XGBClassifier`, `zephyr_ml.primitives.postprocessing.FindThreshold`.
         
 An XGBClassifier primitive is an XGB model that returns the probability of each class, and FindThreshold primitive creates binary labels from the output of the XGB model by choosing a threshold that produces the best metric value (F1 Score by default).
 
