@@ -1,5 +1,6 @@
 from sigpro import SigPro
 
+
 def process_signals(es, signal_dataframe_name, signal_column, transformations, aggregations,
                     window_size, replace_dataframe=False, **kwargs):
     '''
@@ -48,7 +49,11 @@ def process_signals(es, signal_dataframe_name, signal_column, transformations, a
     )
 
     if replace_dataframe:
-        es.add_dataframe(processed_df, signal_dataframe_name, time_index=time_index, index='_index')
+        es.add_dataframe(
+            processed_df,
+            signal_dataframe_name,
+            time_index=time_index,
+            index='_index')
 
     else:
         df_name = '{}_processed'.format(signal_df.ww.name)

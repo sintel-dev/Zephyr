@@ -1,8 +1,9 @@
 import pandas as pd
 import pytest
 
-from zephyr_ml.feature_engineering import process_signals
 from zephyr_ml import create_pidata_entityset, create_scada_entityset
+from zephyr_ml.feature_engineering import process_signals
+
 
 @pytest.fixture
 def base_dfs():
@@ -118,13 +119,16 @@ def scada_dfs(base_dfs):
     })
     return {**base_dfs, 'scada': scada_df}
 
+
 @pytest.fixture
 def pidata_es(pidata_dfs):
     return create_pidata_entityset(pidata_dfs)
 
+
 @pytest.fixture
 def scada_es(scada_dfs):
     return create_scada_entityset(scada_dfs)
+
 
 @pytest.fixture
 def transformations():
@@ -133,12 +137,15 @@ def transformations():
         "primitive": "sigpro.transformations.amplitude.identity.identity"
     }]
 
+
 @pytest.fixture
 def aggregations():
     return [{
         "name": "mean",
         "primitive": "sigpro.aggregations.amplitude.statistical.mean"
     }]
+
+
 def test_process_signals_pidata(pidata_es, transformations, aggregations):
     signal_dataframe_name = 'pidata'
     signal_column = 'val1'
@@ -149,21 +156,29 @@ def test_process_signals_pidata(pidata_es, transformations, aggregations):
     process_signals(pidata_es, signal_dataframe_name, signal_column, transformations, aggregations,
                     window_size, replace_dataframe)
 
+    processed = pidata_es['pidata_processed'].copy()
+    after = pidata_es['pidata'].copy()
+
     expected = pd.DataFrame({
         "_index": [0, 1, 2],
         "COD_ELEMENT": [0, 0, 0],
-        "time": [pd.Timestamp('2022-01-31'), pd.Timestamp('2022-02-28'), pd.Timestamp('2022-03-31')],
-        "fft.mean.mean_value": [9872, pd._libs.missing.NA, 559]
+        "time": [
+            pd.Timestamp('2022-01-31'),
+            pd.Timestamp('2022-02-28'),
+            pd.Timestamp('2022-03-31')
+        ],
+        "fft.mean.mean_value": [9872, None, 559]
     })
     expected['COD_ELEMENT'] = expected['COD_ELEMENT'].astype('category')
-    expected['fft.mean.mean_value'] = expected['fft.mean.mean_value'].astype('Int64')
-    after = pidata_es['pidata'].copy()
+    expected['fft.mean.mean_value'] = expected['fft.mean.mean_value'].astype('float64')
+    processed['fft.mean.mean_value'] = processed['fft.mean.mean_value'].astype('float64')
 
     assert pidata_es['pidata_processed'].shape[0] == 3
     assert pidata_es['pidata_processed'].shape[1] == 4
 
     pd.testing.assert_frame_equal(before, after)
-    pd.testing.assert_frame_equal(pidata_es['pidata_processed'], expected)
+    pd.testing.assert_frame_equal(processed, expected)
+
 
 def test_process_signals_pidata_replace(pidata_es, transformations, aggregations):
     signal_dataframe_name = 'pidata'
@@ -174,20 +189,28 @@ def test_process_signals_pidata_replace(pidata_es, transformations, aggregations
     process_signals(pidata_es, signal_dataframe_name, signal_column, transformations, aggregations,
                     window_size, replace_dataframe)
 
+    processed = pidata_es['pidata'].copy()
+
     expected = pd.DataFrame({
         "_index": [0, 1, 2],
         "COD_ELEMENT": [0, 0, 0],
-        "time": [pd.Timestamp('2022-01-31'), pd.Timestamp('2022-02-28'), pd.Timestamp('2022-03-31')],
-        "fft.mean.mean_value": [9872, pd._libs.missing.NA, 559]
+        "time": [
+            pd.Timestamp('2022-01-31'),
+            pd.Timestamp('2022-02-28'),
+            pd.Timestamp('2022-03-31')
+        ],
+        "fft.mean.mean_value": [9872, None, 559]
     })
     expected['COD_ELEMENT'] = expected['COD_ELEMENT'].astype('category')
-    expected['fft.mean.mean_value'] = expected['fft.mean.mean_value'].astype('Int64')
+    expected['fft.mean.mean_value'] = expected['fft.mean.mean_value'].astype('float64')
+    processed['fft.mean.mean_value'] = processed['fft.mean.mean_value'].astype('float64')
 
     assert pidata_es['pidata'].shape[0] == 3
     assert pidata_es['pidata'].shape[1] == 4
 
-    pd.testing.assert_frame_equal(pidata_es['pidata'], expected)
+    pd.testing.assert_frame_equal(processed, expected)
     assert 'pidata_processed' not in list(pidata_es.dataframe_dict.keys())
+
 
 def test_process_signals_scada(scada_es, transformations, aggregations):
     signal_dataframe_name = 'scada'
@@ -202,7 +225,11 @@ def test_process_signals_scada(scada_es, transformations, aggregations):
     expected = pd.DataFrame({
         "_index": [0, 1, 2],
         "COD_ELEMENT": [0, 0, 0],
-        "TIMESTAMP": [pd.Timestamp('2022-01-31'), pd.Timestamp('2022-02-28'), pd.Timestamp('2022-03-31')],
+        "TIMESTAMP": [
+            pd.Timestamp('2022-01-31'),
+            pd.Timestamp('2022-02-28'),
+            pd.Timestamp('2022-03-31')
+        ],
         "fft.mean.mean_value": [1002, None, 56.8]
     })
     expected['COD_ELEMENT'] = expected['COD_ELEMENT'].astype('category')
@@ -214,6 +241,7 @@ def test_process_signals_scada(scada_es, transformations, aggregations):
 
     pd.testing.assert_frame_equal(before, after)
     pd.testing.assert_frame_equal(scada_es['scada_processed'], expected)
+
 
 def test_process_signals_scada_replace(scada_es, transformations, aggregations):
     signal_dataframe_name = 'scada'
@@ -227,7 +255,11 @@ def test_process_signals_scada_replace(scada_es, transformations, aggregations):
     expected = pd.DataFrame({
         "_index": [0, 1, 2],
         "COD_ELEMENT": [0, 0, 0],
-        "TIMESTAMP": [pd.Timestamp('2022-01-31'), pd.Timestamp('2022-02-28'), pd.Timestamp('2022-03-31')],
+        "TIMESTAMP": [
+            pd.Timestamp('2022-01-31'),
+            pd.Timestamp('2022-02-28'),
+            pd.Timestamp('2022-03-31')
+        ],
         "fft.mean.mean_value": [1002, None, 56.8]
     })
     expected['COD_ELEMENT'] = expected['COD_ELEMENT'].astype('category')
