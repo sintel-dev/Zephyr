@@ -1,6 +1,5 @@
 from sigpro import SigPro
 
-
 def process_signals(es, signal_dataframe_name, signal_column, transformations, aggregations,
                     window_size, replace_dataframe=False, **kwargs):
     '''
@@ -20,14 +19,12 @@ def process_signals(es, signal_dataframe_name, signal_column, transformations, a
             List of dictionaries containing the transformation primitives.
         aggregations (list[dict]):
             List of dictionaries containing the aggregation primitives.
+        window_size (str):
+            Size of the window to bin the signals over. e.g. ('1h).
         replace_dataframe (bool):
             If ``True``, will replace the entire signal dataframe in the EntitySet with the
             processed signals. Defaults to ``False``, creating a new child dataframe containing
             processed signals with the suffix ``_processed``.
-
-    Returns:
-        featuretools.EntitySet:
-            Entityset with processed signals.
     '''
     signal_df = es[signal_dataframe_name]
     time_index = signal_df.ww.time_index
@@ -51,7 +48,7 @@ def process_signals(es, signal_dataframe_name, signal_column, transformations, a
     )
 
     if replace_dataframe:
-        es[signal_df] = processed_df
+        es.add_dataframe(processed_df, signal_dataframe_name, time_index=time_index, index='_index')
 
     else:
         df_name = '{}_processed'.format(signal_df.ww.name)
@@ -60,5 +57,3 @@ def process_signals(es, signal_dataframe_name, signal_column, transformations, a
 
         es.add_relationship('turbines', old_relationship.parent_column.name, df_name,
                             old_relationship.child_column.name)
-
-    return es
