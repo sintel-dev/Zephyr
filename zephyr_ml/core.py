@@ -51,7 +51,7 @@ class Zephyr:
         hyperparameters (dict):
             Additional hyperparameters to set to the Pipeline.
     """
-    DEFAULT_PIPELINE = 'xgb'
+    DEFAULT_PIPELINE = 'xgb_classifier'
 
     def _get_mlpipeline(self):
         pipeline = self._pipeline
