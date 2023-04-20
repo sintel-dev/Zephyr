@@ -214,9 +214,6 @@ Once we have the feature matrix, we can train a model using the Zephyr interface
 First, we need to prepare our dataset for training such as imputed missing values.
 
 ```python3
-from sklearn.impute import SimpleImputer
-
-# pop the target labels
 y = list(feature_matrix.pop('label'))
 X = pd.get_dummies(feature_matrix).values
 ```
@@ -226,7 +223,9 @@ In this example, we will use an 'xgb'  pipeline.
 ```python3
 from zephyr_ml import Zephyr
 
-zephyr = Zephyr('xgb_regressor')
+pipeline_name = 'xgb_regressor'
+
+zephyr = Zephyr(pipeline_name)
 ```
 
 To train the pipeline, we simply use the `fit` function.
@@ -235,6 +234,7 @@ zephyr.fit(X, y)
 ```
 
 After it finished training,  we can make prediciton using `predict`
+
 ```python3
 y_pred =  zephyr.predict(X)
 ```
