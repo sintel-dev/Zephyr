@@ -211,14 +211,14 @@ COD_ELEMENT time                                                                
 ## 5. Modeling
 
 Once we have the feature matrix, we can train a model using the Zephyr interface where you can train, infer, and evaluate a pipeline. 
-First, we need to prepare our dataset for training such as imputed missing values.
+First, we need to prepare our dataset for training by creating ``X`` and ``y`` variables and one-hot encoding features.
 
 ```python3
 y = list(feature_matrix.pop('label'))
 X = pd.get_dummies(feature_matrix).values
 ```
 
-In this example, we will use an 'xgb'  pipeline.
+In this example, we will use an 'xgb' regression pipeline to predict total power loss.
 
 ```python3
 from zephyr_ml import Zephyr
@@ -238,6 +238,8 @@ After it finished training,  we can make prediciton using `predict`
 ```python3
 y_pred =  zephyr.predict(X)
 ```
+
+We can also use ``zephyr.evaluate`` to obtain the performance of the pipeline.
 
 # What's Next?
 
