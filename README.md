@@ -150,7 +150,7 @@ function.
 {'brake_pad_presence': 'Calculates the total power loss over the data slice.',
  'converter_replacement_presence': 'Calculates the converter replacement presence.',
  'total_power_loss': 'Calculates the total power loss over the data slice.'}
- ```
+```
 
 In this case, we will choose the `total_power_loss` function, which calculates the total
 amount of power lost over a slice of time.
