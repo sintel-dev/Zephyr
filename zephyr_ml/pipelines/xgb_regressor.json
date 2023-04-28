@@ -1,0 +1,15 @@
+{
+    "metadata": {
+        "name": "xgb",
+        "data_type": "single_table",
+        "task_type": "regression"
+    },
+    "primitives": [
+        "xgboost.XGBRegressor"
+    ],
+    "output_names": {
+        "xgboost.XGBRegressor#1": {
+            "y": "y_pred"
+        }
+    }
+}
