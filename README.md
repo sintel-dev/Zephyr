@@ -150,7 +150,7 @@ function.
 {'brake_pad_presence': 'Calculates the total power loss over the data slice.',
  'converter_replacement_presence': 'Calculates the converter replacement presence.',
  'total_power_loss': 'Calculates the total power loss over the data slice.'}
- ```
+```
 
 In this case, we will choose the `total_power_loss` function, which calculates the total
 amount of power lost over a slice of time.
@@ -160,12 +160,6 @@ amount of power lost over a slice of time.
 Once we have loaded the data and the Labeling Function, we are ready to start using
 the `zephyr_ml.generate_labels` function to generate a Target Times table.
 
-```python3
-from zephyr_ml import DataLabeler
-
-data_labeler = DataLabeler(labeling.labeling_functions.total_power_loss)
-target_times, metadata = data_labeler.generate_label_times(scada_es)
-```
 
 ```python3
 from zephyr_ml import DataLabeler
