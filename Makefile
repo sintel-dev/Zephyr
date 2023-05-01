@@ -164,9 +164,13 @@ publish-confirm:
 		&& read answer \
 		&& [ "$${answer}" = "confirm" ]
 
+.PHONY: publish-test
+publish-test: dist publish-confirm ## package and upload a release on TestPyPI
+	twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
 .PHONY: publish
 publish: dist publish-confirm ## package and upload a release
-	twine upload --repository-url https://pypi.dailab.ml:8080 dist/*
+	twine upload dist/*
 
 .PHONY: bumpversion-release
 bumpversion-release: ## Merge main to stable and bumpversion release

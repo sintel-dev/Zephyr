@@ -12,7 +12,6 @@
 
    API Reference <api/zephyr_ml>
    contributing
-   authors
    history
 
 Indices and tables

@@ -32,7 +32,7 @@ class TestZephyr:
         cls.random_y = [1 if x > 0.5 else 0 for x in np.random.random(100)]
 
     def setup(self):
-        self.zephyr = Zephyr('xgb')
+        self.zephyr = Zephyr('xgb_classifier')
 
     def test_hyperparameters(self):
         hyperparameters = {
@@ -44,13 +44,13 @@ class TestZephyr:
             }
         }
 
-        zephyr = Zephyr('xgb', hyperparameters)
+        zephyr = Zephyr('xgb_classifier', hyperparameters)
 
         assert zephyr._hyperparameters == hyperparameters
 
     def test_json(self):
         file = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        json_zephyr = Zephyr(os.path.join(file, 'zephyr_ml', 'pipelines', 'xgb.json'))
+        json_zephyr = Zephyr(os.path.join(file, 'zephyr_ml', 'pipelines', 'xgb_classifier.json'))
 
         json_zephyr_hyperparameters = json_zephyr._mlpipeline.get_hyperparameters()
         zephyr_hyperparameters = self.zephyr._mlpipeline.get_hyperparameters()

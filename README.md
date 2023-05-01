@@ -26,6 +26,7 @@ A machine learning library for assisting in the generation of machine learning p
  [Website]: https://sintel.dev/
  [Documentation]: https://dtail.gitbook.io/zephyr/
  [Repository]: https://github.com/sintel-dev/Zephyr
+ [Tutorials]: https://github.com/sintel-dev/Zephyr/blob/master/notebooks
  [License]: https://github.com/sintel-dev/Zephyr/blob/master/LICENSE
  [Development Status]: https://pypi.org/search/?c=Development+Status+%3A%3A+2+-+Pre-Alpha
  [Community]: https://join.slack.com/t/sintel-space/shared_invite/zt-q147oimb-4HcphcxPfDAM0O9_4PaUtw
@@ -149,7 +150,7 @@ function.
 {'brake_pad_presence': 'Calculates the total power loss over the data slice.',
  'converter_replacement_presence': 'Calculates the converter replacement presence.',
  'total_power_loss': 'Calculates the total power loss over the data slice.'}
- ```
+```
 
 In this case, we will choose the `total_power_loss` function, which calculates the total
 amount of power lost over a slice of time.
@@ -158,6 +159,7 @@ amount of power lost over a slice of time.
 
 Once we have loaded the data and the Labeling Function, we are ready to start using
 the `zephyr_ml.generate_labels` function to generate a Target Times table.
+
 
 ```python3
 from zephyr_ml import DataLabeler
@@ -173,6 +175,65 @@ working on a Machine Learning problem: the turbine ID (COD_ELEMENT), the cutoff 
    COD_ELEMENT       time    label
 0            0 2022-01-01  45801.0
 ```
+
+## 4. Feature Engineering
+Using EntitySets and LabelTimes allows us to easily use Featuretools for automatic feature generation.
+
+```python3
+import featuretools as ft
+
+feature_matrix, features = ft.dfs(
+    entityset=scada_es,
+    target_dataframe_name='turbines',
+    cutoff_time_in_index=True,
+    cutoff_time=target_times,
+    max_features=20
+)
+```
+
+Then we get a list of features and the computed `feature_matrix`.
+
+```
+                       TURBINE_PI_ID TURBINE_LOCAL_ID TURBINE_SAP_COD DES_CORE_ELEMENT      SITE DES_CORE_PLANT  ... MODE(alarms.COD_STATUS) MODE(alarms.DES_NAME)  MODE(alarms.DES_TITLE)  NUM_UNIQUE(alarms.COD_ALARM)  NUM_UNIQUE(alarms.COD_ALARM_INT)    label
+COD_ELEMENT time                                                                                                 ...                                                                                                                                               
+0           2022-01-01          TA00               A0          LOC000              T00  LOCATION            LOC  ...                  Alarm1                Alarm1  Description of alarm 1                             1                                 1  45801.0
+
+[1 rows x 21 columns]
+```
+
+
+## 5. Modeling
+
+Once we have the feature matrix, we can train a model using the Zephyr interface where you can train, infer, and evaluate a pipeline. 
+First, we need to prepare our dataset for training by creating ``X`` and ``y`` variables and one-hot encoding features.
+
+```python3
+y = list(feature_matrix.pop('label'))
+X = pd.get_dummies(feature_matrix).values
+```
+
+In this example, we will use an 'xgb' regression pipeline to predict total power loss.
+
+```python3
+from zephyr_ml import Zephyr
+
+pipeline_name = 'xgb_regressor'
+
+zephyr = Zephyr(pipeline_name)
+```
+
+To train the pipeline, we simply use the `fit` function.
+```python3
+zephyr.fit(X, y)
+```
+
+After it finished training,  we can make prediciton using `predict`
+
+```python3
+y_pred =  zephyr.predict(X)
+```
+
+We can also use ``zephyr.evaluate`` to obtain the performance of the pipeline.
 
 # What's Next?
 
