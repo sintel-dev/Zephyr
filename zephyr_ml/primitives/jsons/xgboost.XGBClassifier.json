@@ -1,7 +1,8 @@
 {
     "name": "xgboost.XGBClassifier",
     "contributors": [
-        "Carles Sala <csala@csail.mit.edu>"
+        "Carles Sala <csala@csail.mit.edu>",
+        "Sarah Alnegheimish <smish@mit.edu>"
     ],
     "documentation": "https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBClassifier",
     "description": "Implementation of the scikit-learn API for XGBoost classification.",
@@ -45,6 +46,22 @@
             "n_jobs": {
                 "type": "int",
                 "default": -1
+            },
+            "verbosity": {
+                "type": "int",
+                "default": 1
+            },
+            "objective": {
+                "type": "string",
+                "default": "binary:logistic"
+            },
+            "booster": {
+                "type": "string",
+                "default": "gbtree"
+            },
+            "random_state": {
+                "type": "int",
+                "default": 0
             }
         },
         "tunable": {

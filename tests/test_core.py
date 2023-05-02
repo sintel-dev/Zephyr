@@ -59,12 +59,44 @@ class TestZephyr:
     def test_fit(self):
         self.zephyr.fit(self.train, self.train_y)
 
+    def test_fit_visual(self):
+        output = self.zephyr.fit(self.train, self.train_y, visual=True)
+
+        assert isinstance(output, dict)
+        assert list(output.keys()) == ['threshold', 'scores']
+
+    def test_fit_no_visual(self):
+        zephyr = Zephyr(['xgboost.XGBClassifier'])
+
+        output = zephyr.fit(self.train, self.train_y, visual=True)
+        assert output is None
+
     def test_predict(self):
         self.zephyr.fit(self.train, self.train_y)
 
         predicted = self.zephyr.predict(self.test)
 
         assert self.test_y == predicted
+
+    def test_predict_visual(self):
+        self.zephyr.fit(self.train, self.train_y)
+
+        predicted, output = self.zephyr.predict(self.test, visual=True)
+
+        # predictions
+        assert self.test_y == predicted
+
+        # visualization
+        assert isinstance(output, dict)
+        assert list(output.keys()) == ['threshold', 'scores']
+
+    def test_predict_no_visual(self):
+        zephyr = Zephyr(['xgboost.XGBClassifier'])
+
+        zephyr.fit(self.train, self.train_y)
+
+        predicted = zephyr.predict(self.test, visual=True)
+        assert len(self.test_y) == len(predicted)
 
     def test_fit_predict(self):
         predicted = self.zephyr.fit_predict(self.random, self.random_y)

@@ -50,16 +50,17 @@ class FindThreshold:
 
         RANGE = np.arange(0, 1, 0.01)
 
-        values = list()
+        scores = list()
         scorer = METRICS[self._metric]
         for thresh in RANGE:
             y = [1 if x else 0 for x in y_pred > thresh]
-            values.append(scorer(y_true, y))
+            scores.append(scorer(y_true, y))
 
-        threshold = RANGE[np.argmax(values)]
+        threshold = RANGE[np.argmax(scores)]
         LOGGER.info(f'best threshold found at {threshold}')
 
         self._threshold = threshold
+        self._scores = scores
 
     def apply_threshold(self, y_pred):
         """Apply threshold on predicted values.
@@ -69,10 +70,13 @@ class FindThreshold:
                 ``pandas.Series`` predicted target valeus.
 
         Return:
-            list:
-                predicted target valeus in binary codes.
+            tuple:
+                * list of predicted target valeus in binary codes.
+                * detected float value for threshold.
+                * list of scores obtained at each threshold.
         """
         if y_pred.ndim > 1:
             y_pred = y_pred[:, 1]
 
-        return [1 if x else 0 for x in y_pred > self._threshold]
+        binary = [1 if x else 0 for x in y_pred > self._threshold]
+        return binary, self._threshold, self._scores
