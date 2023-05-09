@@ -1,0 +1,39 @@
+{
+    "metadata": {
+        "name": "xgb",
+        "data_type": "single_table",
+        "task_type": "classification"
+    },
+    "primitives": [
+        "xgboost.XGBClassifier",
+        "zephyr_ml.primitives.postprocessing.FindThreshold"
+    ],
+    "input_names": {
+        "zephyr_ml.primitives.postprocessing.FindThreshold#1": {
+            "y_true": "y"
+        }
+    },
+    "output_names": {
+        "xgboost.XGBClassifier#1": {
+            "y": "y_pred"
+        }
+    },
+    "outputs": {
+        "default": [
+            {
+                "name": "y",
+                "variable": "zephyr_ml.primitives.postprocessing.FindThreshold#1.y"
+            }
+        ],
+        "visual": [
+            {
+                "name": "threshold",
+                "variable": "zephyr_ml.primitives.postprocessing.FindThreshold#1.threshold"
+            },
+            {
+                "name": "scores",
+                "variable": "zephyr_ml.primitives.postprocessing.FindThreshold#1.scores"
+            }
+        ]
+    }
+}

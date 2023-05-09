@@ -1,5 +1,13 @@
 # History
 
+## 0.0.2 - 2023-05-09
+
+SigPro integration for processing signals
+
+* Integrating SigPro - [Issue #7](https://github.com/signals-dev/Zephyr/issues/7) by @frances-h @sarahmish 
+* Add options to xgb pipeline - [Issue #5](https://github.com/signals-dev/Zephyr/issues/5) by @sarahmish
+
+
 ## 0.0.1 - 2023-03-02
 
 New modeling module using Zephyr class

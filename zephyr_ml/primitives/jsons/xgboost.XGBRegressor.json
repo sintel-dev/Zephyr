@@ -1,17 +1,16 @@
 {
-    "name": "xgboost.XGBClassifier",
+    "name": "xgboost.XGBRegressor",
     "contributors": [
-        "Carles Sala <csala@csail.mit.edu>",
-        "Sarah Alnegheimish <smish@mit.edu>"
+        "Carles Sala <csala@csail.mit.edu>"
     ],
-    "documentation": "https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBClassifier",
-    "description": "Implementation of the scikit-learn API for XGBoost classification.",
+    "documentation": "https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRegressor",
+    "description": "Implementation of the scikit-learn API for XGBoost regression.",
     "classifiers": {
         "type": "estimator",
-        "subtype": "classifier"
+        "subtype": "regressor"
     },
     "modalities": [],
-    "primitive": "xgboost.XGBClassifier",
+    "primitive": "xgboost.XGBRegressor",
     "fit": {
         "method": "fit",
         "args": [
@@ -26,7 +25,7 @@
         ]
     },
     "produce": {
-        "method": "predict_proba",
+        "method": "predict",
         "args": [
             {
                 "name": "X",
@@ -46,22 +45,6 @@
             "n_jobs": {
                 "type": "int",
                 "default": -1
-            },
-            "verbosity": {
-                "type": "int",
-                "default": 1
-            },
-            "objective": {
-                "type": "string",
-                "default": "binary:logistic"
-            },
-            "booster": {
-                "type": "string",
-                "default": "gbtree"
-            },
-            "random_state": {
-                "type": "int",
-                "default": 0
             }
         },
         "tunable": {
@@ -91,7 +74,7 @@
             },
             "gamma": {
                 "type": "float",
-                "default": 0,
+                "default": 0.1,
                 "range": [
                     0,
                     1

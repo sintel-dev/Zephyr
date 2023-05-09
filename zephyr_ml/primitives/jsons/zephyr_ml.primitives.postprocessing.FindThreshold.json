@@ -35,6 +35,14 @@
             {
                 "name": "y",
                 "type": "ndarray"
+            },
+            {
+                "name": "threshold",
+                "type": "float"
+            },
+            {
+                "name": "scores",
+                "type": "ndarray"
             }
         ]
     },
