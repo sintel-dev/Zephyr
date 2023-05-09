@@ -223,7 +223,7 @@ endif
 check-release: check-main check-history ## Check if the release can be made
 
 .PHONY: release
-release: check-release bumpversion-release docker-push publish bumpversion-patch
+release: check-release bumpversion-release publish bumpversion-patch
 
 .PHONY: release-candidate
 release-candidate: check-main publish bumpversion-candidate
