@@ -84,8 +84,7 @@ install-develop: clean-build clean-pyc ## install the package in editable mode a
 
 .PHONY: lint
 lint: ## check style with flake8 and isort
-	flake8 zephyr_ml tests
-	isort -c --recursive zephyr_ml tests
+	invoke lint
 
 .PHONY: fix-lint
 fix-lint: ## fix lint issues using autoflake, autopep8, and isort
@@ -97,21 +96,15 @@ fix-lint: ## fix lint issues using autoflake, autopep8, and isort
 
 .PHONY: test-unit
 test-unit: ## run tests quickly with the default Python
-	python -m pytest --cov=zephyr_ml
+	invoke pytest
 
 .PHONY: test-readme
 test-readme: ## run the readme snippets
-	rm -rf tests/readme_test && mkdir -p tests/readme_test/notebooks
-	cp -r notebooks/data tests/readme_test/notebooks/
-	cd tests/readme_test && rundoc run --single-session python3 -t python3 ../../README.md
-	rm -rf tests/readme_test
-
+	invoke readme
 
 .PHONY: test-tutorials
 test-tutorials: ## run the tutorial notebooks
-	find notebooks -path "*/.ipynb_checkpoints" -prune -false -o -name "*.ipynb" -exec \
-		jupyter nbconvert --execute --ExecutePreprocessor.timeout=3600 --to=html --stdout {} > /dev/null \;
-
+	invoke tutorials
 
 .PHONY: test
 test: test-unit test-readme test-tutorials ## test everything that needs test dependencies
