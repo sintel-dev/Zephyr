@@ -73,6 +73,26 @@ def create_scada_entityset(dfs, new_kwargs_mapping=None):
     return es
 
 
+def create_vibrations_entityset(dfs, new_kwargs_mapping=None):
+    '''Generate an entityset for Vibrations data datasets
+
+    Args:
+        data_paths (dict): Dictionary mapping entity names ('alarms', 'notifications',
+            'stoppages', 'work_orders', 'pidata', 'vibrations', 'turbines') to the pandas
+            dataframe for that entity.
+    '''
+    entity_kwargs = {
+        **get_mapped_kwargs('pidata', new_kwargs_mapping),
+        **get_mapped_kwargs('vibrations', new_kwargs_mapping),
+    }
+    _validate_data(dfs, 'vibrations', entity_kwargs)
+
+    es = _create_entityset(dfs, 'vibrations', entity_kwargs)
+    es.id = 'Vibrations data'
+
+    return es
+
+
 def _validate_data(dfs, es_type, es_kwargs):
     '''Validate data by checking for required columns in each entity
     '''
