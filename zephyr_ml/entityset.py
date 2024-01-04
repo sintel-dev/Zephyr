@@ -1,3 +1,5 @@
+from itertools import chain
+
 import featuretools as ft
 
 from zephyr_ml.metadata import get_mapped_kwargs
@@ -85,7 +87,7 @@ def create_vibrations_entityset(dfs, new_kwargs_mapping=None):
         **get_mapped_kwargs('pidata', new_kwargs_mapping),
         **get_mapped_kwargs('vibrations', new_kwargs_mapping),
     }
-    _validate_data(dfs, 'vibrations', entity_kwargs)
+    _validate_data(dfs, ['pidata', 'vibrations'], entity_kwargs)
 
     es = _create_entityset(dfs, 'vibrations', entity_kwargs)
     es.id = 'Vibrations data'
@@ -96,7 +98,11 @@ def create_vibrations_entityset(dfs, new_kwargs_mapping=None):
 def _validate_data(dfs, es_type, es_kwargs):
     '''Validate data by checking for required columns in each entity
     '''
-    entities = set(['alarms', 'stoppages', 'work_orders', 'notifications', 'turbines', es_type])
+    if not isinstance(es_type, list):
+        es_type = [es_type]
+
+    entities = set(chain(['alarms', 'stoppages', 'work_orders', 'notifications', 'turbines', *es_type]))
+
     if set(dfs.keys()) != entities:
         missing = entities.difference(set(dfs.keys()))
         extra = set(dfs.keys()).difference(entities)
