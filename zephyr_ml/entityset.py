@@ -101,7 +101,9 @@ def _validate_data(dfs, es_type, es_kwargs):
     if not isinstance(es_type, list):
         es_type = [es_type]
 
-    entities = set(chain(['alarms', 'stoppages', 'work_orders', 'notifications', 'turbines', *es_type]))
+    entities = set(chain(
+        ['alarms', 'stoppages', 'work_orders', 'notifications', 'turbines', *es_type]
+    ))
 
     if set(dfs.keys()) != entities:
         missing = entities.difference(set(dfs.keys()))
