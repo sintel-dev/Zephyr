@@ -23,7 +23,7 @@ install_requires = [
     'composeml>=0.1.6,<0.10',
     'featuretools>=1.0.0,<2.0.0',
     'mlblocks>=0.5.0,<0.6',
-    'sigpro>=0.1.1.dev0',
+    'sigpro>=0.1.1.dev0,<0.1.2',
     'xgboost>=0.72.1,<1',
     'jupyter==1.0.0',
 ]
