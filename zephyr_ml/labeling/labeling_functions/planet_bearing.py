@@ -1,5 +1,6 @@
 from zephyr_ml.labeling.utils import denormalize
 
+
 def gearbox_replace_presence(es, column_map={}):
     """Determines if gearbox replacement/exchange is present in stoppages.
 

@@ -31,7 +31,7 @@ class TestZephyr:
         })
         cls.random_y = [1 if x > 0.5 else 0 for x in np.random.random(100)]
 
-    def setup(self):
+    def setup_method(self):
         self.zephyr = Zephyr('xgb_classifier')
 
     def test_hyperparameters(self):
