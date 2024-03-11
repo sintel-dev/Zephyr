@@ -80,14 +80,25 @@ def create_vibrations_entityset(dfs, new_kwargs_mapping=None):
 
     Args:
         data_paths (dict): Dictionary mapping entity names ('alarms', 'notifications',
-            'stoppages', 'work_orders', 'pidata', 'vibrations', 'turbines') to the pandas
-            dataframe for that entity.
+            'stoppages', 'work_orders', 'vibrations', 'turbines') to the pandas
+            dataframe for that entity. Optionally 'pidata' and 'scada' can be included.
     '''
+    entities = ['vibrations']
+
+    pidata_kwargs, scada_kwargs = {}, {}
+    if 'pidata' in dfs:
+        pidata_kwargs = get_mapped_kwargs('pidata', new_kwargs_mapping)
+        entities.append('pidata')
+    if 'scada' in dfs:
+        pidata_kwargs = get_mapped_kwargs('scada', new_kwargs_mapping)
+        entities.append('scada')
+
     entity_kwargs = {
-        **get_mapped_kwargs('pidata', new_kwargs_mapping),
+        **pidata_kwargs,
+        **scada_kwargs,
         **get_mapped_kwargs('vibrations', new_kwargs_mapping),
     }
-    _validate_data(dfs, ['pidata', 'vibrations'], entity_kwargs)
+    _validate_data(dfs, entities , entity_kwargs)
 
     es = _create_entityset(dfs, 'vibrations', entity_kwargs)
     es.id = 'Vibrations data'
