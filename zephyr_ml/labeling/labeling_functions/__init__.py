@@ -1,4 +1,5 @@
 from zephyr_ml.labeling.labeling_functions.brake_pad_presence import brake_pad_presence
 from zephyr_ml.labeling.labeling_functions.converter_replacement_presence import (
     converter_replacement_presence)
+from zephyr_ml.labeling.labeling_functions.planet_bearing import gearbox_replace_presence
 from zephyr_ml.labeling.labeling_functions.total_power_loss import total_power_loss

@@ -1,11 +1,12 @@
 from zephyr_ml.labeling import utils
 from zephyr_ml.labeling.data_labeler import DataLabeler
 from zephyr_ml.labeling.labeling_functions import (
-    brake_pad_presence, converter_replacement_presence, total_power_loss)
+    brake_pad_presence, converter_replacement_presence, gearbox_replace_presence, total_power_loss)
 
 LABELING_FUNCTIONS = [
     brake_pad_presence,
     converter_replacement_presence,
+    gearbox_replace_presence,
     total_power_loss
 ]
 UTIL_FUNCTIONS = [
