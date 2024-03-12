@@ -18,12 +18,12 @@ except IOError:
     history = ''
 
 install_requires = [
-    'numpy>=1.16.0,<1.23.0',
+    'numpy>=1.19.5,<1.27.0',
     'pandas>=1,<2',
     'composeml>=0.1.6,<0.10',
     'featuretools>=1.0.0,<2.0.0',
-    'mlblocks>=0.5.0,<0.6',
-    'sigpro>=0.1.1.dev0',
+    'mlblocks>=0.6.0,<0.7',
+    'sigpro>=0.2.0',
     'xgboost>=0.72.1,<1',
     'jupyter==1.0.0',
 ]
@@ -37,6 +37,7 @@ tests_require = [
     'pytest-cov>=2.6.0',
     'jupyter>=1.0.0,<2',
     'rundoc>=0.4.3,<0.5',
+    'invoke',
 ]
 
 development_requires = [
@@ -82,9 +83,10 @@ setup(
         'Intended Audience :: Developers',
         'Natural Language :: English',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
     ],
     description='Prediction engineering methods for Draco.',
     entry_points={
@@ -105,11 +107,11 @@ setup(
     keywords='zephyr Draco Prediction Engineering',
     name='zephyr-ml',
     packages=find_packages(include=['zephyr_ml', 'zephyr_ml.*']),
-    python_requires='>=3.7,<3.9',
+    python_requires='>=3.8,<3.12',
     setup_requires=setup_requires,
     test_suite='tests',
     tests_require=tests_require,
     url='https://github.com/sintel-dev/zephyr',
-    version='0.0.2',
+    version='0.0.3.dev2',
     zip_safe=False,
 )

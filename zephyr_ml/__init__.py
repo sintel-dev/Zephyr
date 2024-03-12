@@ -4,7 +4,7 @@
 
 __author__ = 'MIT Data To AI Lab'
 __email__ = 'dai-lab@mit.edu'
-__version__ = '0.0.2'
+__version__ = '0.0.3.dev2'
 
 import os
 
