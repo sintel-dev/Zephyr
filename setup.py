@@ -53,6 +53,7 @@ development_requires = [
     'Sphinx>=3,<3.3',
     'sphinx_rtd_theme>=0.2.4,<0.5',
     'autodocsumm>=0.1.10',
+    'mistune>=0.7,<2',
     'Jinja2>=2,<3.1',
     
     # fails on Sphinx < v3.4
