@@ -98,7 +98,7 @@ def create_vibrations_entityset(dfs, new_kwargs_mapping=None):
         **scada_kwargs,
         **get_mapped_kwargs('vibrations', new_kwargs_mapping),
     }
-    _validate_data(dfs, entities , entity_kwargs)
+    _validate_data(dfs, entities, entity_kwargs)
 
     es = _create_entityset(dfs, 'vibrations', entity_kwargs)
     es.id = 'Vibrations data'
