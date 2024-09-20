@@ -1,3 +1,5 @@
+from itertools import chain
+
 import featuretools as ft
 
 from zephyr_ml.metadata import get_mapped_kwargs
@@ -73,10 +75,47 @@ def create_scada_entityset(dfs, new_kwargs_mapping=None):
     return es
 
 
+def create_vibrations_entityset(dfs, new_kwargs_mapping=None):
+    '''Generate an entityset for Vibrations data datasets
+
+    Args:
+        data_paths (dict): Dictionary mapping entity names ('alarms', 'notifications',
+            'stoppages', 'work_orders', 'vibrations', 'turbines') to the pandas
+            dataframe for that entity. Optionally 'pidata' and 'scada' can be included.
+    '''
+    entities = ['vibrations']
+
+    pidata_kwargs, scada_kwargs = {}, {}
+    if 'pidata' in dfs:
+        pidata_kwargs = get_mapped_kwargs('pidata', new_kwargs_mapping)
+        entities.append('pidata')
+    if 'scada' in dfs:
+        pidata_kwargs = get_mapped_kwargs('scada', new_kwargs_mapping)
+        entities.append('scada')
+
+    entity_kwargs = {
+        **pidata_kwargs,
+        **scada_kwargs,
+        **get_mapped_kwargs('vibrations', new_kwargs_mapping),
+    }
+    _validate_data(dfs, entities, entity_kwargs)
+
+    es = _create_entityset(dfs, 'vibrations', entity_kwargs)
+    es.id = 'Vibrations data'
+
+    return es
+
+
 def _validate_data(dfs, es_type, es_kwargs):
     '''Validate data by checking for required columns in each entity
     '''
-    entities = set(['alarms', 'stoppages', 'work_orders', 'notifications', 'turbines', es_type])
+    if not isinstance(es_type, list):
+        es_type = [es_type]
+
+    entities = set(chain(
+        ['alarms', 'stoppages', 'work_orders', 'notifications', 'turbines', *es_type]
+    ))
+
     if set(dfs.keys()) != entities:
         missing = entities.difference(set(dfs.keys()))
         extra = set(dfs.keys()).difference(entities)
