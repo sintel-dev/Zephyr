@@ -48,6 +48,7 @@ development_requires = [
 
     # docs
     'docutils>=0.12,<0.18',
+    'lxml_html_clean>=0.2.2',
     'm2r2>=0.2.5,<0.3',
     'nbsphinx>=0.5.0,<0.7',
     'Sphinx>=3,<3.3',
