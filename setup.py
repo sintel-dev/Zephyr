@@ -98,6 +98,7 @@ setup(
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
     ],
     description='Prediction engineering methods for Draco.',
     entry_points={
@@ -118,7 +119,7 @@ setup(
     keywords='zephyr Draco Prediction Engineering',
     name='zephyr-ml',
     packages=find_packages(include=['zephyr_ml', 'zephyr_ml.*']),
-    python_requires='>=3.8,<3.12',
+    python_requires='>=3.8,<3.13',
     setup_requires=setup_requires,
     test_suite='tests',
     tests_require=tests_require,

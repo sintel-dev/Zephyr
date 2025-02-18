@@ -58,7 +58,7 @@ to wind farm data.
 
 ## Requirements
 
-**Zephyr** has been developed and runs on Python 3.6 and 3.7.
+**Zephyr** has been developed and runs on Python 3.8, 3.9, 3.10, 3.11 and 3.12.
 
 Also, although it is not strictly required, the usage of a [virtualenv](
 https://virtualenv.pypa.io/en/latest/) is highly recommended in order to avoid interfering
