@@ -124,6 +124,6 @@ setup(
     test_suite='tests',
     tests_require=tests_require,
     url='https://github.com/sintel-dev/zephyr',
-    version='0.0.4.dev0',
+    version='0.0.4.dev1',
     zip_safe=False,
 )
