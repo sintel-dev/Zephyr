@@ -1,5 +1,14 @@
 # History
 
+## 0.0.4 – 2024-03-07
+
+Supporting vibrations entityset and python 3.12
+
+* Add python 3.12 - [Issue #23](https://github.com/signals-dev/Zephyr/issues/23) by @sarahmish
+* Fix doc test - [Issue #22](https://github.com/signals-dev/Zephyr/issues/22) by @sarahmish
+* Create vibrations entityset - [Issue #22](https://github.com/signals-dev/Zephyr/issues/22) by @sarahmish @SaraPido
+
+
 ## 0.0.3 - 2024-03-12
 
 SigPro supporting python 3.9, 3.10, and 3.11

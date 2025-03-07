@@ -47,14 +47,25 @@ development_requires = [
     'watchdog>=0.8.3,<0.11',
 
     # docs
-    'm2r>=0.2.0,<0.3',
+    'docutils>=0.12,<0.18',
+    'lxml_html_clean>=0.2.2',
+    'm2r2>=0.2.5,<0.3',
     'nbsphinx>=0.5.0,<0.7',
-    'Sphinx>=1.7.1,<3',
+    'Sphinx>=3,<3.3',
     'sphinx_rtd_theme>=0.2.4,<0.5',
     'autodocsumm>=0.1.10',
     'mistune>=0.7,<2',
-    'Jinja2<3.1',
-
+    'Jinja2>=2,<3.1',
+    
+    # fails on Sphinx < v3.4
+    'alabaster<=0.7.12',
+    # fails on Sphins < v5.0
+    'sphinxcontrib-applehelp<1.0.8',
+    'sphinxcontrib-devhelp<1.0.6',
+    'sphinxcontrib-htmlhelp<2.0.5',
+    'sphinxcontrib-serializinghtml<1.1.10',
+    'sphinxcontrib-qthelp<1.0.7',
+    
     # style check
     'flake8>=3.7.7,<4',
     'isort>=4.3.4,<5',
@@ -87,6 +98,7 @@ setup(
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
     ],
     description='Prediction engineering methods for Draco.',
     entry_points={
@@ -107,11 +119,11 @@ setup(
     keywords='zephyr Draco Prediction Engineering',
     name='zephyr-ml',
     packages=find_packages(include=['zephyr_ml', 'zephyr_ml.*']),
-    python_requires='>=3.8,<3.12',
+    python_requires='>=3.8,<3.13',
     setup_requires=setup_requires,
     test_suite='tests',
     tests_require=tests_require,
     url='https://github.com/sintel-dev/zephyr',
-    version='0.0.3',
+    version='0.0.4.dev1',
     zip_safe=False,
 )
