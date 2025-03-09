@@ -8,6 +8,9 @@ import featuretools as ft
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
+import os
+import json
+from mlblocks import MLPipeline
 
 
 class Zephyr:
@@ -162,7 +165,7 @@ class Zephyr:
         self.X_train = X_train
         self.X_test = X_test
         self.y_train = y_train
-        self.y_test = y_train
+        self.y_test = y_test
 
         return
 
@@ -179,19 +182,49 @@ class Zephyr:
         pass
 
     def set_pipeline(self, pipeline, pipeline_hyperparameters):
-        self.pipeline = pipeline
+        self.pipeline = self._get_mlpipeline(pipeline, pipeline_hyperparameters)
         self.pipeline_hyperparameters = pipeline_hyperparameters
 
-    def fit(self, **kwargs):  # kwargs indicate the parameters of the current pipeline
-        pass
+    def get_pipeline(self):
+        return self.pipeline
 
-    def predict(self, **kwargs):
-        pass
+    def fit(
+        self, X=None, y=None, visual=False, **kwargs
+    ):  # kwargs indicate the parameters of the current pipeline
+        if X is None:
+            X = self.X_train
+        if y is None:
+            y = self.y_train
 
-    def fit_predict(self):
-        pass
+        if visual:
+            outputs_spec, visual_names = self._get_outputs_spec(False)
+        else:
+            outputs_spec = None
 
-    def evaluate(self):
+        outputs = self.pipeline.fit(X, y, output_=outputs_spec, **kwargs)
+
+        if visual and outputs is not None:
+            return dict(zip(visual_names, outputs))
+
+    def predict(self, X=None, visual=False, **kwargs):
+        if X is None:
+            X = self.X_test
+        if visual:
+            outputs_spec, visual_names = self._get_outputs_spec()
+        else:
+            outputs_spec = "default"
+
+        outputs = self.pipeline.predict(X, output_=outputs_spec, **kwargs)
+
+        if visual and visual_names:
+            prediction = outputs[0]
+            return prediction, dict(zip(visual_names, outputs[-len(visual_names) :]))
+
+        return outputs
+
+    def evaluate(self, X=None, y=None, metrics=None):
+        result = self.pipeline.predict(X)
+
         pass
 
     def _validate_step(self, **kwargs):
@@ -210,3 +243,25 @@ class Zephyr:
         feature_matrix = pd.get_dummies(feature_matrix, columns=string_cols)
 
         return feature_matrix, labels
+
+    def _get_mlpipeline(self, pipeline, hyperparameters):
+        if isinstance(pipeline, str) and os.path.isfile(pipeline):
+            with open(pipeline) as json_file:
+                pipeline = json.load(json_file)
+
+        mlpipeline = MLPipeline(pipeline)
+        if hyperparameters:
+            mlpipeline.set_hyperparameters(hyperparameters)
+
+        return mlpipeline
+
+    def _get_outputs_spec(self, default=True):
+        outputs_spec = ["default"] if default else []
+
+        try:
+            visual_names = self.pipeline.get_output_names("visual")
+            outputs_spec.append("visual")
+        except ValueError:
+            visual_names = []
+
+        return outputs_spec, visual_names
