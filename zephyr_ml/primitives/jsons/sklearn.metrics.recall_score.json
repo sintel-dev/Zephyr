@@ -20,14 +20,15 @@
                 "name": "y_pred",
                 "type": "ndarray"
             }
-        ]
-    },
-    "output": [
+        ],
+        "output": [
         {
             "name": "score",
             "type": "float or int"
         }
-    ],
+    ]
+    },
+    
     "hyperparameters": {
         "fixed": {
             "labels": {
