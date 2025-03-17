@@ -86,8 +86,10 @@ class FindThreshold:
         return binary, self._threshold, self._scores
 
 
-def confusion_matrix(y_true, y_pred):
-    conf_matrix = metrics.confusion_matrix(y_true, y_pred)
+def confusion_matrix(y_true, y_pred, labels=None, sample_weight=None, normalize=None):
+    conf_matrix = metrics.confusion_matrix(
+        y_true, y_pred, labels=labels, sample_weight=sample_weight, normalize=normalize
+    )
     ax = sns.heatmap(conf_matrix, annot=True, cmap="Blues")
     ax.set_title("Confusion Matrix\n")
     ax.set_xlabel("\nPredicted Values")
@@ -95,6 +97,7 @@ def confusion_matrix(y_true, y_pred):
 
     ax.xaxis.set_ticklabels(["False", "True"])
     ax.yaxis.set_ticklabels(["False", "True"])
+    return conf_matrix
 
 
 def roc_auc_score_and_curve(y_true, y_prob):
