@@ -100,14 +100,28 @@ def confusion_matrix(y_true, y_pred, labels=None, sample_weight=None, normalize=
     return conf_matrix
 
 
-def roc_auc_score_and_curve(y_true, y_prob):
-    fpr, tpr, _ = metrics.roc_curve(y_true, y_prob)
+def roc_auc_score_and_curve(
+    y_true, y_proba, pos_label=None, sample_weight=None, drop_intermediate=True
+):
+    fpr, tpr, _ = metrics.roc_curve(
+        y_true,
+        y_proba,
+        pos_label=pos_label,
+        sample_weight=sample_weight,
+        drop_intermediate=drop_intermediate,
+    )
     ns_probs = [0 for _ in range(len(y_true))]
-    ns_fpr, ns_tpr, _ = metrics.roc_curve(y_true, ns_probs)
+    ns_fpr, ns_tpr, _ = metrics.roc_curve(
+        y_true,
+        ns_probs,
+        pos_label=pos_label,
+        sample_weight=sample_weight,
+        drop_intermediate=drop_intermediate,
+    )
 
     _, _ = plt.subplots(1, 1)
 
-    auc = metrics.roc_auc_score(y_true, y_prob)
+    auc = metrics.roc_auc_score(y_true, y_proba)
 
     plt.plot(fpr, tpr, "ro")
     plt.plot(fpr, tpr)

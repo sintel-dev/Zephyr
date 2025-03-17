@@ -21,6 +21,8 @@ DEFAULT_METRICS = [
     "sklearn.metrics.precision_score",
     "sklearn.metrics.f1_score",
     "sklearn.metrics.recall_score",
+    "zephyr_ml.primitives.postprocessing.confusion_matrix",
+    "zephyr_ml.primitives.postprocessing.roc_auc_score_and_curve",
 ]
 
 
@@ -245,8 +247,12 @@ class Zephyr:
             y = self.y_test
 
         context_0 = self.pipeline.predict(X, output_=0)
-        y_proba = context_0["y_pred"]
+        y_proba = context_0["y_pred"][::, 1]
+        print("y_proba", y_proba.shape)
         y_pred = self.pipeline.predict(start_=1, **context_0)
+        print("y_pred", y_pred)
+        print("X", X)
+        print("y_true", y.shape)
         if metrics is None:
             metrics = DEFAULT_METRICS
 

@@ -16,7 +16,7 @@
                 "type": "ndarray"
             },
             {
-                "name": "y_pred",
+                "name": "y_proba",
                 "type": "ndarray"
             }
         ],
