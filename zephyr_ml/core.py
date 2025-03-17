@@ -248,11 +248,8 @@ class Zephyr:
 
         context_0 = self.pipeline.predict(X, output_=0)
         y_proba = context_0["y_pred"][::, 1]
-        print("y_proba", y_proba.shape)
         y_pred = self.pipeline.predict(start_=1, **context_0)
-        print("y_pred", y_pred)
-        print("X", X)
-        print("y_true", y.shape)
+
         if metrics is None:
             metrics = DEFAULT_METRICS
 
