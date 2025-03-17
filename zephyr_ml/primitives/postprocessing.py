@@ -1,10 +1,14 @@
 """
 Postprocessing functions.
 """
+
 import logging
 
 import numpy as np
 import sklearn
+from sklearn import metrics
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,8 +36,8 @@ class FindThreshold:
             String representing which metric to use.
     """
 
-    def __init__(self, metric='f1'):
-        self._metric = 'f1'
+    def __init__(self, metric="f1"):
+        self._metric = "f1"
         self._threshold = None
 
     def fit(self, y_true, y_pred):
@@ -57,7 +61,7 @@ class FindThreshold:
             scores.append(scorer(y_true, y))
 
         threshold = RANGE[np.argmax(scores)]
-        LOGGER.info(f'best threshold found at {threshold}')
+        LOGGER.info(f"best threshold found at {threshold}")
 
         self._threshold = threshold
         self._scores = scores
@@ -80,3 +84,39 @@ class FindThreshold:
 
         binary = [1 if x else 0 for x in y_pred > self._threshold]
         return binary, self._threshold, self._scores
+
+
+def confusion_matrix(y_true, y_pred):
+    conf_matrix = metrics.confusion_matrix(y_true, y_pred)
+    ax = sns.heatmap(conf_matrix, annot=True, cmap="Blues")
+    ax.set_title("Confusion Matrix\n")
+    ax.set_xlabel("\nPredicted Values")
+    ax.set_ylabel("Actual Values")
+
+    ax.xaxis.set_ticklabels(["False", "True"])
+    ax.yaxis.set_ticklabels(["False", "True"])
+
+
+def roc_auc_score(y_true, y_prob):
+    auc = metrics.roc_auc_score(y_true, y_prob)
+    return auc
+
+
+def roc_auc_score_and_curve(y_true, y_prob):
+    fpr, tpr, _ = metrics.roc_curve(y_true, y_prob)
+    ns_probs = [0 for _ in range(len(y_true))]
+    ns_fpr, ns_tpr, _ = metrics.roc_curve(y_true, ns_probs)
+
+    _, _ = plt.subplots(1, 1)
+
+    auc = roc_auc_score(y_true, y_prob)
+
+    plt.plot(fpr, tpr, "ro")
+    plt.plot(fpr, tpr)
+    plt.plot(ns_fpr, ns_tpr, linestyle="--", color="green")
+
+    plt.ylabel("True Positive Rate")
+    plt.xlabel("False Positive Rate")
+    plt.title("AUC: %.3f" % auc)
+
+    return auc

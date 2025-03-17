@@ -16,7 +16,12 @@ import json
 from mlblocks import MLPipeline, MLBlock, get_primitives_paths, add_primitives_path
 from itertools import chain
 
-DEFAULT_METRICS = ["sklearn.metrics.accuracy_score"]
+DEFAULT_METRICS = [
+    "sklearn.metrics.accuracy_score",
+    "sklearn.metrics.precision_score",
+    "sklearn.metrics.f1_score",
+    "sklearn.metrics.recall_score",
+]
 
 
 class Zephyr:
