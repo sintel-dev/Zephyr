@@ -97,11 +97,6 @@ def confusion_matrix(y_true, y_pred):
     ax.yaxis.set_ticklabels(["False", "True"])
 
 
-def roc_auc_score(y_true, y_prob):
-    auc = metrics.roc_auc_score(y_true, y_prob)
-    return auc
-
-
 def roc_auc_score_and_curve(y_true, y_prob):
     fpr, tpr, _ = metrics.roc_curve(y_true, y_prob)
     ns_probs = [0 for _ in range(len(y_true))]
@@ -109,7 +104,7 @@ def roc_auc_score_and_curve(y_true, y_prob):
 
     _, _ = plt.subplots(1, 1)
 
-    auc = roc_auc_score(y_true, y_prob)
+    auc = metrics.roc_auc_score(y_true, y_prob)
 
     plt.plot(fpr, tpr, "ro")
     plt.plot(fpr, tpr)
