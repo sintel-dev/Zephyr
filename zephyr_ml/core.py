@@ -15,6 +15,7 @@ import os
 import json
 from mlblocks import MLPipeline, MLBlock, get_primitives_paths, add_primitives_path
 from itertools import chain
+import logging
 
 DEFAULT_METRICS = [
     "sklearn.metrics.accuracy_score",
@@ -25,7 +26,7 @@ DEFAULT_METRICS = [
     "zephyr_ml.primitives.postprocessing.roc_auc_score_and_curve",
 ]
 
-
+LOGGER = logging.getLogger(__name__)
 class Zephyr:
 
     def __init__(self):
@@ -253,11 +254,17 @@ class Zephyr:
         if metrics is None:
             metrics = DEFAULT_METRICS
 
+        results = {}
         for metric in metrics:
-            metric_primitive = self._get_ml_primitive(metric)
-            print(metric_primitive)
-            res = metric_primitive.produce(y_pred=y_pred, y_proba=y_proba, y_true=y)
-            print(metric_primitive.name, res)
+            try:
+
+                metric_primitive = self._get_ml_primitive(metric)
+                res = metric_primitive.produce(y_pred=y_pred, y_proba=y_proba, y_true=y)
+                results[metric_primitive.name] = res
+            except Exception as e:
+                LOGGER.error(f"Unable to run evaluation metric: {metric_primitive.name}", exc_info = e)
+        return results
+
 
     def _validate_step(self, **kwargs):
         for key, value in kwargs:
