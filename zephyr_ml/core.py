@@ -40,6 +40,7 @@ class Zephyr:
         self.X_test = None
         self.y_train = None
         self.y_test = None
+        self.results = None
 
     def get_entityset_types(self):
         """
@@ -263,6 +264,7 @@ class Zephyr:
                 results[metric_primitive.name] = res
             except Exception as e:
                 LOGGER.error(f"Unable to run evaluation metric: {metric_primitive.name}", exc_info = e)
+        self.results = results
         return results
 
 
