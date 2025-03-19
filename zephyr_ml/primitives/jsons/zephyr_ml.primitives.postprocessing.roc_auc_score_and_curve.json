@@ -41,6 +41,10 @@
             "drop_intermediate": {
                 "type": "bool",
                 "default": true
+            },
+            "show_plot": {
+                "type": "bool",
+                "default": true
             }
         }
     }

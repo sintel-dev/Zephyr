@@ -86,23 +86,25 @@ class FindThreshold:
         return binary, self._threshold, self._scores
 
 
-def confusion_matrix(y_true, y_pred, labels=None, sample_weight=None, normalize=None):
+def confusion_matrix(y_true, y_pred, labels=None, sample_weight=None, normalize=None, show_plot = True):
     conf_matrix = metrics.confusion_matrix(
         y_true, y_pred, labels=labels, sample_weight=sample_weight, normalize=normalize
     )
-    ax = sns.heatmap(conf_matrix, annot=True, cmap="Blues")
-    ax.set_title("Confusion Matrix\n")
-    ax.set_xlabel("\nPredicted Values")
-    ax.set_ylabel("Actual Values")
+    if show_plot:
+        ax = sns.heatmap(conf_matrix, annot=True, cmap="Blues")
+        ax.set_title("Confusion Matrix\n")
+        ax.set_xlabel("\nPredicted Values")
+        ax.set_ylabel("Actual Values")
 
-    ax.xaxis.set_ticklabels(["False", "True"])
-    ax.yaxis.set_ticklabels(["False", "True"])
-    plt.show()
+        ax.xaxis.set_ticklabels(["False", "True"])
+        ax.yaxis.set_ticklabels(["False", "True"])
+        
+        plt.show()
     return conf_matrix
 
 
 def roc_auc_score_and_curve(
-    y_true, y_proba, pos_label=None, sample_weight=None, drop_intermediate=True
+    y_true, y_proba, pos_label=None, sample_weight=None, drop_intermediate=True, show_plot = True
 ):
     fpr, tpr, _ = metrics.roc_curve(
         y_true,
@@ -120,17 +122,17 @@ def roc_auc_score_and_curve(
         drop_intermediate=drop_intermediate,
     )
 
-    _, _ = plt.subplots(1, 1)
 
     auc = metrics.roc_auc_score(y_true, y_proba)
+    if show_plot:
+        _, _ = plt.subplots(1, 1)
+        plt.plot(fpr, tpr, "ro")
+        plt.plot(fpr, tpr)
+        plt.plot(ns_fpr, ns_tpr, linestyle="--", color="green")
 
-    plt.plot(fpr, tpr, "ro")
-    plt.plot(fpr, tpr)
-    plt.plot(ns_fpr, ns_tpr, linestyle="--", color="green")
-
-    plt.ylabel("True Positive Rate")
-    plt.xlabel("False Positive Rate")
-    plt.title("AUC: %.3f" % auc)
-    plt.show()
+        plt.ylabel("True Positive Rate")
+        plt.xlabel("False Positive Rate")
+        plt.title("AUC: %.3f" % auc)
+        plt.show()
 
     return auc

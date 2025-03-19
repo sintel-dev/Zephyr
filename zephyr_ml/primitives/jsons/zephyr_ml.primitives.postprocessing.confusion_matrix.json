@@ -42,6 +42,10 @@
             "normalize": {
                 "type": "str",
                 "default": null
+            },
+            "show_plot": {
+                "type": "bool",
+                "default": true
             }
         }
     }
