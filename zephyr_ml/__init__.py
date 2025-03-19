@@ -10,8 +10,8 @@ import os
 
 from zephyr_ml.core import Zephyr
 from zephyr_ml.entityset import (
-    create_pidata_entityset,
-    create_scada_entityset,
+    # create_pidata_entityset,
+    # create_scada_entityset,
     _create_entityset,
     VALIDATE_DATA_FUNCTIONS,
 )

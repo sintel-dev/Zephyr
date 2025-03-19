@@ -97,6 +97,7 @@ def confusion_matrix(y_true, y_pred, labels=None, sample_weight=None, normalize=
 
     ax.xaxis.set_ticklabels(["False", "True"])
     ax.yaxis.set_ticklabels(["False", "True"])
+    plt.show()
     return conf_matrix
 
 
@@ -130,5 +131,6 @@ def roc_auc_score_and_curve(
     plt.ylabel("True Positive Rate")
     plt.xlabel("False Positive Rate")
     plt.title("AUC: %.3f" % auc)
+    plt.show()
 
     return auc

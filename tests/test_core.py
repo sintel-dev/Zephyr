@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from zephyr_ml.core import Zephyr
+import logging
 
 
 class TestZephyr:
@@ -30,6 +31,13 @@ class TestZephyr:
             'feature 3': np.random.random(100),
         })
         cls.random_y = [1 if x > 0.5 else 0 for x in np.random.random(100)]
+
+    
+
+
+
+            
+          
 
     def setup_method(self):
         self.zephyr = Zephyr('xgb_classifier')

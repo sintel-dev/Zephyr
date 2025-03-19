@@ -5,103 +5,103 @@ import featuretools as ft
 from zephyr_ml.metadata import get_mapped_kwargs, get_es_types
 
 
-def _create_entityset(entities, es_type, es_kwargs):
+# def _create_entityset(entities, es_type, es_kwargs):
 
-    # filter out stated logical types for missing columns
-    for entity, df in entities.items():
-        es_kwargs[entity]["logical_types"] = {
-            col: t
-            for col, t in es_kwargs[entity]["logical_types"].items()
-            if col in df.columns
-        }
+#     # filter out stated logical types for missing columns
+#     for entity, df in entities.items():
+#         es_kwargs[entity]["logical_types"] = {
+#             col: t
+#             for col, t in es_kwargs[entity]["logical_types"].items()
+#             if col in df.columns
+#         }
 
-    turbines_index = es_kwargs["turbines"]["index"]
-    work_orders_index = es_kwargs["work_orders"]["index"]
+#     turbines_index = es_kwargs["turbines"]["index"]
+#     work_orders_index = es_kwargs["work_orders"]["index"]
 
-    relationships = [
-        ("turbines", turbines_index, "alarms", turbines_index),
-        ("turbines", turbines_index, "stoppages", turbines_index),
-        ("turbines", turbines_index, "work_orders", turbines_index),
-        ("turbines", turbines_index, es_type, turbines_index),
-        ("work_orders", work_orders_index, "notifications", work_orders_index),
-    ]
+#     relationships = [
+#         ("turbines", turbines_index, "alarms", turbines_index),
+#         ("turbines", turbines_index, "stoppages", turbines_index),
+#         ("turbines", turbines_index, "work_orders", turbines_index),
+#         ("turbines", turbines_index, es_type, turbines_index),
+#         ("work_orders", work_orders_index, "notifications", work_orders_index),
+#     ]
 
-    es = ft.EntitySet()
+#     es = ft.EntitySet()
 
-    for name, df in entities.items():
-        es.add_dataframe(dataframe_name=name, dataframe=df, **es_kwargs[name])
+#     for name, df in entities.items():
+#         es.add_dataframe(dataframe_name=name, dataframe=df, **es_kwargs[name])
 
-    for relationship in relationships:
-        parent_df, parent_column, child_df, child_column = relationship
-        es.add_relationship(parent_df, parent_column, child_df, child_column)
+#     for relationship in relationships:
+#         parent_df, parent_column, child_df, child_column = relationship
+#         es.add_relationship(parent_df, parent_column, child_df, child_column)
 
-    return es
-
-
-def create_pidata_entityset(dfs, new_kwargs_mapping=None):
-    """Generate an entityset for PI data datasets
-
-    Args:
-        data_paths (dict): Dictionary mapping entity names ('alarms', 'notifications',
-            'stoppages', 'work_orders', 'pidata', 'turbines') to the pandas dataframe for
-            that entity.
-        **kwargs: Updated keyword arguments to be used during entityset creation
-    """
-    entity_kwargs = get_mapped_kwargs("pidata", new_kwargs_mapping)
-    _validate_data(dfs, "pidata", entity_kwargs)
-
-    es = _create_entityset(dfs, "pidata", entity_kwargs)
-    es.id = "PI data"
-
-    return es
+#     return es
 
 
-def create_scada_entityset(dfs, new_kwargs_mapping=None):
-    """Generate an entityset for SCADA data datasets
+# def create_pidata_entityset(dfs, new_kwargs_mapping=None):
+#     """Generate an entityset for PI data datasets
 
-    Args:
-        data_paths (dict): Dictionary mapping entity names ('alarms', 'notifications',
-            'stoppages', 'work_orders', 'scada', 'turbines') to the pandas dataframe for
-            that entity.
-    """
-    entity_kwargs = get_mapped_kwargs("scada", new_kwargs_mapping)
-    _validate_data(dfs, "scada", entity_kwargs)
+#     Args:
+#         data_paths (dict): Dictionary mapping entity names ('alarms', 'notifications',
+#             'stoppages', 'work_orders', 'pidata', 'turbines') to the pandas dataframe for
+#             that entity.
+#         **kwargs: Updated keyword arguments to be used during entityset creation
+#     """
+#     entity_kwargs = get_mapped_kwargs("pidata", new_kwargs_mapping)
+#     _validate_data(dfs, "pidata", entity_kwargs)
 
-    es = _create_entityset(dfs, "scada", entity_kwargs)
-    es.id = "SCADA data"
+#     es = _create_entityset(dfs, "pidata", entity_kwargs)
+#     es.id = "PI data"
 
-    return es
+#     return es
 
 
-def create_vibrations_entityset(dfs, new_kwargs_mapping=None):
-    """Generate an entityset for Vibrations data datasets
+# def create_scada_entityset(dfs, new_kwargs_mapping=None):
+#     """Generate an entityset for SCADA data datasets
 
-    Args:
-        data_paths (dict): Dictionary mapping entity names ('alarms', 'notifications',
-            'stoppages', 'work_orders', 'vibrations', 'turbines') to the pandas
-            dataframe for that entity. Optionally 'pidata' and 'scada' can be included.
-    """
-    entities = ["vibrations"]
+#     Args:
+#         data_paths (dict): Dictionary mapping entity names ('alarms', 'notifications',
+#             'stoppages', 'work_orders', 'scada', 'turbines') to the pandas dataframe for
+#             that entity.
+#     """
+#     entity_kwargs = get_mapped_kwargs("scada", new_kwargs_mapping)
+#     _validate_data(dfs, "scada", entity_kwargs)
 
-    pidata_kwargs, scada_kwargs = {}, {}
-    if "pidata" in dfs:
-        pidata_kwargs = get_mapped_kwargs("pidata", new_kwargs_mapping)
-        entities.append("pidata")
-    if "scada" in dfs:
-        scada_kwargs = get_mapped_kwargs("scada", new_kwargs_mapping)
-        entities.append("scada")
+#     es = _create_entityset(dfs, "scada", entity_kwargs)
+#     es.id = "SCADA data"
 
-    entity_kwargs = {
-        **pidata_kwargs,
-        **scada_kwargs,
-        **get_mapped_kwargs("vibrations", new_kwargs_mapping),
-    }
-    _validate_data(dfs, entities, entity_kwargs)
+#     return es
 
-    es = _create_entityset(dfs, "vibrations", entity_kwargs)
-    es.id = "Vibrations data"
 
-    return es
+# def create_vibrations_entityset(dfs, new_kwargs_mapping=None):
+#     """Generate an entityset for Vibrations data datasets
+
+#     Args:
+#         data_paths (dict): Dictionary mapping entity names ('alarms', 'notifications',
+#             'stoppages', 'work_orders', 'vibrations', 'turbines') to the pandas
+#             dataframe for that entity. Optionally 'pidata' and 'scada' can be included.
+#     """
+#     entities = ["vibrations"]
+
+#     pidata_kwargs, scada_kwargs = {}, {}
+#     if "pidata" in dfs:
+#         pidata_kwargs = get_mapped_kwargs("pidata", new_kwargs_mapping)
+#         entities.append("pidata")
+#     if "scada" in dfs:
+#         scada_kwargs = get_mapped_kwargs("scada", new_kwargs_mapping)
+#         entities.append("scada")
+
+#     entity_kwargs = {
+#         **pidata_kwargs,
+#         **scada_kwargs,
+#         **get_mapped_kwargs("vibrations", new_kwargs_mapping),
+#     }
+#     _validate_data(dfs, entities, entity_kwargs)
+
+#     es = _create_entityset(dfs, "vibrations", entity_kwargs)
+#     es.id = "Vibrations data"
+
+#     return es
 
 
 def _validate_data(dfs, es_type, es_kwargs):
@@ -215,6 +215,7 @@ def validate_scada_data(dfs, new_kwargs_mapping=None):
 def validate_pidata_data(dfs, new_kwargs_mapping=None):
     entity_kwargs = get_mapped_kwargs("pidata", new_kwargs_mapping)
     _validate_data(dfs, "pidata", entity_kwargs)
+    return entity_kwargs
 
 
 def validate_vibrations_data(dfs, new_kwargs_mapping=None):
@@ -245,8 +246,12 @@ VALIDATE_DATA_FUNCTIONS = {
 
 
 def _create_entityset(entities, es_type, new_kwargs_mapping=None):
+    
     validate_func = VALIDATE_DATA_FUNCTIONS[es_type]
     es_kwargs = validate_func(entities, new_kwargs_mapping)
+    print(entities)
+    print(es_type)
+    print(es_kwargs)
 
     # filter out stated logical types for missing columns
     for entity, df in entities.items():
@@ -280,12 +285,12 @@ def _create_entityset(entities, es_type, new_kwargs_mapping=None):
     return es
 
 
-CREATE_ENTITYSET_FUNCTIONS = {
-    "scada": create_scada_entityset,
-    "pidata": create_pidata_entityset,
-    "vibrations": create_vibrations_entityset,
-}
+# CREATE_ENTITYSET_FUNCTIONS = {
+#     "scada": create_scada_entityset,
+#     "pidata": create_pidata_entityset,
+#     "vibrations": create_vibrations_entityset,
+# }
 
 
-def get_create_entityset_functions():
-    return CREATE_ENTITYSET_FUNCTIONS.copy()
+# def get_create_entityset_functions():
+#     return CREATE_ENTITYSET_FUNCTIONS.copy()
