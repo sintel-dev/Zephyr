@@ -249,9 +249,6 @@ def _create_entityset(entities, es_type, new_kwargs_mapping=None):
     
     validate_func = VALIDATE_DATA_FUNCTIONS[es_type]
     es_kwargs = validate_func(entities, new_kwargs_mapping)
-    print(entities)
-    print(es_type)
-    print(es_kwargs)
 
     # filter out stated logical types for missing columns
     for entity, df in entities.items():

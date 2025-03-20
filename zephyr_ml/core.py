@@ -18,6 +18,7 @@ from mlblocks import MLPipeline, MLBlock, get_primitives_paths, add_primitives_p
 from itertools import chain
 import logging
 import matplotlib.pyplot as plt
+from functools import wraps
 
 DEFAULT_METRICS = [
     "sklearn.metrics.accuracy_score",
@@ -29,6 +30,63 @@ DEFAULT_METRICS = [
 ]
 
 LOGGER = logging.getLogger(__name__)
+
+def guide(method):
+
+    @wraps(method)
+    def guided_step(self, *method_args, **method_kwargs):
+        expected_next_step = self.current_step + 1
+        method_name = method.__name__
+        if method_name in self.producer_to_step_map:
+            actual_next_step = self.producer_to_step_map[method_name]
+            if actual_next_step > expected_next_step:
+                necessary_steps_str = self._get_necessary_steps(actual_next_step)
+                LOGGER.error(f"Required steps have been skipped! Unable to run {method_name}. Please perform the following steps first {necessary_steps_str}")
+                return
+            elif actual_next_step < self.current_step: #regressing, make stale data, warn
+                try:
+                    res = method(self, *method_args, **method_kwargs)
+                    LOGGER.warning(f"The last run step was {self.current_step}. The following methods will return stale data. Please perform the following steps in order to get up to date.")
+                    self.current_step = actual_next_step
+                    return res
+                except Exception as e:
+                    LOGGER.error(f"{method_name} threw an exception", exc_info = e)
+                    return
+            else:
+                try:
+                    res = method(self, *method_args, **method_kwargs)
+                    self.current_step = actual_next_step
+
+                    # do logging here
+                    return res
+                except Exception as e:
+                    LOGGER.error(f"{method_name} threw an exception", exc_info = e)
+                
+        elif method_name in self.getter_to_step_map:
+            actual_next_step = self.getter_to_step_map[method_name]
+            if actual_next_step > expected_next_step:
+                try:
+                    res = method(self, *method_args, **method_kwargs)
+                    if res is None:
+                        LOGGER.error(f"Required steps have been skipped!. {method_name} does not have a value to return. Please perform the following steps in order before running this method.")
+                    else:
+                        LOGGER.warning(f"This data may be stale. Please perform the following steps in order to ensure the response is up to date.")
+                        return res
+                except Exception as e:
+                    LOGGER.error(f"{method_name} threw an exception", exc_info = e)
+                    return
+            else:
+                try:
+                    res = method(self, *method_args, **method_kwargs)
+                    return res
+                except Exception as e:
+                    LOGGER.error(f"{method_name} threw an exception", exc_info = e)
+        else:
+            print(f"Method {method_name} does not need to be wrapped")
+
+
+    return guided_step
+
 class Zephyr:
 
     def __init__(self):
@@ -42,14 +100,40 @@ class Zephyr:
         self.X_test = None
         self.y_train = None
         self.y_test = None
+        self.is_fitted = None
         self.results = None
+
+        self.current_step = -1
+        # tuple of 2 arrays: producers and attributes
+        self.step_order = [
+            ([self.create_entityset, self.set_entityset], [self.get_entityset]),
+            ([self.set_labeling_function], [self.get_labeling_function]),
+            ([self.generate_label_times], [self.get_label_times]),
+            ([self.generate_feature_matrix_and_labels, self.set_feature_matrix_and_labels], [self.get_feature_matrix_and_labels]),
+            ([self.generate_train_test_split, self.set_train_test_split], [self.get_train_test_split]),
+            ([self.set_pipeline], [self.get_pipeline]),
+            ([self.fit], []),
+            ([self.predict, self.evaluate], [])
+        ]
+
+        self.producer_to_step_map = {}
+        self.getter_to_step_map = {}
+        for idx, (producers, getters) in enumerate(self.step_order):
+            for prod in producers:
+                self.producer_to_step_map[prod.__name__] = idx
+            for get in getters:
+                self.getter_to_step_map[get.__name__] = idx
+    
+    def _get_necessary_steps(self, actual_step):
+        pass
 
     def get_entityset_types(self):
         """
-        Returns the supported entityset types (PI/SCADA) and the required dataframes and their columns
+        Returns the supported entityset types (PI/SCADA/Vibrations) and the required dataframes and their columns
         """
         return VALIDATE_DATA_FUNCTIONS.keys()
 
+    @guide
     def create_entityset(self, data_paths, es_type, new_kwargs_mapping=None):
         """
         Generate an entityset
@@ -68,12 +152,7 @@ class Zephyr:
         self.entityset = entityset
         return self.entityset
 
-    def get_entityset(self):
-        if self.entityset is None:
-            raise ValueError("No entityset has been created or set in this instance.")
-
-        return self.entityset
-
+    @guide
     def set_entityset(self, entityset, es_type, new_kwargs_mapping=None):
         dfs = entityset.to_dictionary()
 
@@ -82,9 +161,18 @@ class Zephyr:
 
         self.entityset = entityset
 
+    @guide
+    def get_entityset(self):
+        if self.entityset is None:
+            raise ValueError("No entityset has been created or set in this instance.")
+
+        return self.entityset
+    
+
     def get_predefined_labeling_functions(self):
         return get_labeling_functions()
 
+    @guide
     def set_labeling_function(self, name=None, func=None):
         print(f"labeling fucntion name {name}")
         if name is not None:
@@ -103,7 +191,12 @@ class Zephyr:
             else:
                 raise ValueError(f"Custom function is not callable")
         raise ValueError("No labeling function given.")
-
+    
+    @guide
+    def get_labeling_function(self):
+        return self.labeling_function
+    
+    @guide
     def generate_label_times(
         self, num_samples=-1, subset=None, column_map={}, verbose=False, **kwargs
     ):
@@ -143,12 +236,14 @@ class Zephyr:
 
         return label_times, meta
 
-    def plot_label_times(self):
-        assert self.label_times is not None
-        cp.label_times.plots.LabelPlots(self.label_times).distribution()
+    @guide
+    def get_label_times(self, visualize = True):
+        if visualize:
+            cp.label_times.plots.LabelPlots(self.label_times).distribution()
+        return self.label_times
 
-    def generate_features(self, **kwargs):
-
+    @guide
+    def generate_feature_matrix_and_labels(self, **kwargs):
         feature_matrix, features = ft.dfs(
             entityset=self.entityset, cutoff_time=self.label_times, **kwargs
         )
@@ -157,15 +252,18 @@ class Zephyr:
         print(feature_matrix)
         return feature_matrix, features
 
+    @guide
     def get_feature_matrix_and_labels(self):
         return self.feature_matrix_and_labels
 
+    @guide
     def set_feature_matrix_and_labels(self, feature_matrix, label_col_name="label"):
         assert label_col_name in feature_matrix.columns
         self.feature_matrix_and_labels = self._clean_feature_matrix(
             feature_matrix, label_col_name=label_col_name
         )
 
+    @guide
     def generate_train_test_split(
         self,
         test_size=None,
@@ -191,25 +289,32 @@ class Zephyr:
 
         return
 
+    @guide
     def set_train_test_split(self, X_train, X_test, y_train, y_test):
         self.X_train = X_train
         self.X_test = X_test
         self.y_train = y_train
         self.y_test = y_test
 
+    @guide
     def get_train_test_split(self):
+        if self.X_train is None or self.X_test is None or self.y_train is None or self.y_test is None:
+            return None
         return self.X_train, self.X_test, self.y_train, self.y_test
 
     def get_predefined_pipelines(self):
         pass
 
+    @guide
     def set_pipeline(self, pipeline, pipeline_hyperparameters=None):
         self.pipeline = self._get_mlpipeline(pipeline, pipeline_hyperparameters)
         self.pipeline_hyperparameters = pipeline_hyperparameters
 
+    @guide
     def get_pipeline(self):
         return self.pipeline
-
+    
+    @guide
     def fit(
         self, X=None, y=None, visual=False, **kwargs
     ):  # kwargs indicate the parameters of the current pipeline
@@ -228,6 +333,7 @@ class Zephyr:
         if visual and outputs is not None:
             return dict(zip(visual_names, outputs))
 
+    @guide
     def predict(self, X=None, visual=False, **kwargs):
         if X is None:
             X = self.X_test
@@ -244,6 +350,7 @@ class Zephyr:
 
         return outputs
 
+    @guide
     def evaluate(self, X=None, y=None, metrics=None, show_plots = True):
         if X is None:
             X = self.X_test
@@ -270,10 +377,6 @@ class Zephyr:
         self.results = results
         return results
 
-
-    def _validate_step(self, **kwargs):
-        for key, value in kwargs:
-            assert (value is not None, f"{key} has not been set or created")
 
     def _clean_feature_matrix(self, feature_matrix, label_col_name="label"):
         labels = feature_matrix.pop(label_col_name)
@@ -473,9 +576,11 @@ if __name__ == "__main__":
     obj.set_labeling_function(name="brake_pad_presence")
 
     obj.generate_label_times(num_samples=35, gap="20d")
-    obj.plot_label_times()
+    obj.get_label_times()
 
-    obj.generate_features(
+    obj.generate_train_test_split()
+
+    obj.generate_feature_matrix_and_labels(
         target_dataframe_name="turbines",
         cutoff_time_in_index=True,
         agg_primitives=["count", "sum", "max"],
