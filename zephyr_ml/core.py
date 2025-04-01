@@ -41,12 +41,13 @@ def guide(method):
             actual_next_step = self.producer_to_step_map[method_name]
             if actual_next_step > expected_next_step:
                 necessary_steps_str = self._get_necessary_steps(actual_next_step)
-                LOGGER.error(f"Required steps have been skipped! Unable to run {method_name}. Please perform the following steps first {necessary_steps_str}")
+                LOGGER.error(f"Required steps have been SKIPPED! Unable to run {method_name}. Please perform the following steps first:\n{necessary_steps_str}")
                 return
             elif actual_next_step < self.current_step: #regressing, make stale data, warn
                 try:
+                    necessary_steps_str = self._get_necessary_steps(actual_next_step)
                     res = method(self, *method_args, **method_kwargs)
-                    LOGGER.warning(f"The last run step was {self.current_step}. The following methods will return stale data. Please perform the following steps in order to get up to date.")
+                    LOGGER.warning(f"The last run step was {self.current_step}. The following methods will return STALE data. Please perform the following steps in order to get up to date:\n{necessary_steps_str}")
                     self.current_step = actual_next_step
                     return res
                 except Exception as e:
@@ -57,7 +58,6 @@ def guide(method):
                     res = method(self, *method_args, **method_kwargs)
                     self.current_step = actual_next_step
 
-                    # do logging here
                     return res
                 except Exception as e:
                     LOGGER.error(f"{method_name} threw an exception", exc_info = e)
@@ -67,10 +67,11 @@ def guide(method):
             if actual_next_step > expected_next_step:
                 try:
                     res = method(self, *method_args, **method_kwargs)
+                    necessary_steps_str = self._get_necessary_steps(actual_next_step)
                     if res is None:
-                        LOGGER.error(f"Required steps have been skipped!. {method_name} does not have a value to return. Please perform the following steps in order before running this method.")
+                        LOGGER.error(f"Required steps have been SKIPPED!. {method_name} does not have a value to return. Please perform the following steps in order before running this method:\n{necessary_steps_str}")
                     else:
-                        LOGGER.warning(f"This data may be stale. Please perform the following steps in order to ensure the response is up to date.")
+                        LOGGER.warning(f"This data may be STALE. Please perform the following steps in order to ensure the response is up to date:\n{necessary_steps_str}")
                         return res
                 except Exception as e:
                     LOGGER.error(f"{method_name} threw an exception", exc_info = e)
@@ -111,8 +112,7 @@ class Zephyr:
             ([self.generate_label_times], [self.get_label_times]),
             ([self.generate_feature_matrix_and_labels, self.set_feature_matrix_and_labels], [self.get_feature_matrix_and_labels]),
             ([self.generate_train_test_split, self.set_train_test_split], [self.get_train_test_split]),
-            ([self.set_pipeline], [self.get_pipeline]),
-            ([self.fit], []),
+            ([self.set_and_fit_pipeline], [self.get_pipeline, self.get_pipeline_hyperparameters]),
             ([self.predict, self.evaluate], [])
         ]
 
@@ -125,7 +125,15 @@ class Zephyr:
                 self.getter_to_step_map[get.__name__] = idx
     
     def _get_necessary_steps(self, actual_step):
-        pass
+        step_strs = []
+        for step in range(self.current_step, actual_step):
+            option_strs = []
+            for opt in self.step_order[step][0]:
+                option_strs.append(opt.__name__)
+            step_strs.append(f"{step}. {' or '.join(option_strs)}")
+        return "\n".join(step_strs)
+
+            
 
     def get_entityset_types(self):
         """
@@ -134,7 +142,7 @@ class Zephyr:
         return VALIDATE_DATA_FUNCTIONS.keys()
 
     @guide
-    def create_entityset(self, data_paths, es_type, new_kwargs_mapping=None):
+    def create_entityset(self, data_paths, es_type, custom_kwargs_mapping=None):
         """
         Generate an entityset
 
@@ -142,22 +150,28 @@ class Zephyr:
         data_paths ( dict ): Dictionary mapping entity names to the pandas
         dataframe for that that entity
         es_type (str): type of signal data , either SCADA or PI
-        new_kwargs_mapping ( dict ): Updated keyword arguments to be used
+        custom_kwargs_mapping ( dict ): Updated keyword arguments to be used
         during entityset creation
         Returns:
         featuretools.EntitySet that contains the data passed in and
         their relationships
         """
-        entityset = _create_entityset(data_paths, es_type, new_kwargs_mapping)
+        entityset = _create_entityset(data_paths, es_type, custom_kwargs_mapping)
         self.entityset = entityset
         return self.entityset
 
     @guide
-    def set_entityset(self, entityset, es_type, new_kwargs_mapping=None):
-        dfs = entityset.to_dictionary()
+    def set_entityset(self, entityset=None, es_type=None, entityset_path = None, custom_kwargs_mapping=None):
+        if entityset_path is not None:
+            entityset = ft.read_entityset(entityset_path)
+
+        if entityset is None:
+            raise ValueError("No entityset passed in. Please pass in an entityset object via the entityest parameter or an entityset path via the entityset_path parameter.")
+        
+        dfs = entityset.dataframe_dict
 
         validate_func = VALIDATE_DATA_FUNCTIONS[es_type]
-        validate_func(dfs, new_kwargs_mapping)
+        validate_func(dfs, custom_kwargs_mapping)
 
         self.entityset = entityset
 
@@ -174,7 +188,6 @@ class Zephyr:
 
     @guide
     def set_labeling_function(self, name=None, func=None):
-        print(f"labeling fucntion name {name}")
         if name is not None:
             labeling_fn_map = get_labeling_functions_map()
             if name in labeling_fn_map:
@@ -249,12 +262,12 @@ class Zephyr:
         )
         self.feature_matrix_and_labels = self._clean_feature_matrix(feature_matrix)
         self.features = features
-        print(feature_matrix)
-        return feature_matrix, features
+        return self.feature_matrix_and_labels, features
 
     @guide
     def get_feature_matrix_and_labels(self):
         return self.feature_matrix_and_labels
+
 
     @guide
     def set_feature_matrix_and_labels(self, feature_matrix, label_col_name="label"):
@@ -305,19 +318,15 @@ class Zephyr:
     def get_predefined_pipelines(self):
         pass
 
-    @guide
-    def set_pipeline(self, pipeline, pipeline_hyperparameters=None):
-        self.pipeline = self._get_mlpipeline(pipeline, pipeline_hyperparameters)
-        self.pipeline_hyperparameters = pipeline_hyperparameters
-
-    @guide
-    def get_pipeline(self):
-        return self.pipeline
+    
     
     @guide
-    def fit(
-        self, X=None, y=None, visual=False, **kwargs
+    def set_and_fit_pipeline(
+        self, pipeline = "xgb_classifier", pipeline_hyperparameters=None, X=None, y=None, visual=False, **kwargs
     ):  # kwargs indicate the parameters of the current pipeline
+        self.pipeline = self._get_mlpipeline(pipeline, pipeline_hyperparameters)
+        self.pipeline_hyperparameters = self.pipeline.get_hyperparameters()
+
         if X is None:
             X = self.X_train
         if y is None:
@@ -332,6 +341,14 @@ class Zephyr:
 
         if visual and outputs is not None:
             return dict(zip(visual_names, outputs))
+        
+    @guide
+    def get_pipeline(self):
+        return self.pipeline
+
+    @guide
+    def get_pipeline_hyperparameters(self):
+        return self.pipeline_hyperparameters
 
     @guide
     def predict(self, X=None, visual=False, **kwargs):
@@ -562,36 +579,41 @@ if __name__ == "__main__":
             "val2": [10.0, -7.0],
         }
     )
-    obj.create_entityset(
-        {
-            "alarms": alarms_df,
-            "stoppages": stoppages_df,
-            "notifications": notifications_df,
-            "work_orders": work_orders_df,
-            "turbines": turbines_df,
-            "pidata": pidata_df,
-        },
-        "pidata",
-    )
+
+    # obj.create_entityset(
+    #     {
+    #         "alarms": alarms_df,
+    #         "stoppages": stoppages_df,
+    #         "notifications": notifications_df,
+    #         "work_orders": work_orders_df,
+    #         "turbines": turbines_df,
+    #         "pidata": pidata_df,
+    #     },
+    #     "pidata",
+    # )
+
+    obj.set_entityset(entityset_path = "/Users/raymondpan/zephyr/Zephyr-repo/brake_pad_es", es_type = 'scada')
+    
     obj.set_labeling_function(name="brake_pad_presence")
 
-    obj.generate_label_times(num_samples=35, gap="20d")
-    obj.get_label_times()
+    obj.generate_label_times(num_samples=10, gap="20d")
+    print(obj.get_label_times())
 
-    obj.generate_train_test_split()
 
     obj.generate_feature_matrix_and_labels(
         target_dataframe_name="turbines",
         cutoff_time_in_index=True,
         agg_primitives=["count", "sum", "max"],
+        verbose = True
     )
+
+    print(obj.get_feature_matrix_and_labels)
 
     obj.generate_train_test_split()
     add_primitives_path(
         path="/Users/raymondpan/zephyr/Zephyr-repo/zephyr_ml/primitives/jsons"
     )
-    obj.set_pipeline("xgb_classifier")
+    obj.set_and_fit_pipeline()
 
-    obj.fit()
 
     obj.evaluate()

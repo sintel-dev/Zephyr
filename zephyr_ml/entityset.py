@@ -109,6 +109,7 @@ def _validate_data(dfs, es_type, es_kwargs):
     if not isinstance(es_type, list):
         es_type = [es_type]
 
+
     entities = set(
         chain(
             [

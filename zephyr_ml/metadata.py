@@ -179,7 +179,6 @@ DEFAULT_ES_TYPE_KWARGS = {
 
 
 def get_mapped_kwargs(es_type, new_kwargs=None):
-    print("getting mapped kwargs")
     if es_type not in DEFAULT_ES_TYPE_KWARGS.keys():
         raise ValueError("Unrecognized es_type argument: {}".format(es_type))
     mapped_kwargs = DEFAULT_ES_KWARGS.copy()
@@ -199,7 +198,6 @@ def get_mapped_kwargs(es_type, new_kwargs=None):
                 )
 
             mapped_kwargs[entity].update(new_kwargs[entity])
-    print(mapped_kwargs)
     return mapped_kwargs
 
 
