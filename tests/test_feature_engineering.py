@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from zephyr_ml import create_pidata_entityset, create_scada_entityset
+from zephyr_ml import _create_entityset
 from zephyr_ml.feature_engineering import process_signals
 
 
@@ -122,12 +122,12 @@ def scada_dfs(base_dfs):
 
 @pytest.fixture
 def pidata_es(pidata_dfs):
-    return create_pidata_entityset(pidata_dfs)
+    return _create_entityset(pidata_dfs, "pidata")
 
 
 @pytest.fixture
 def scada_es(scada_dfs):
-    return create_scada_entityset(scada_dfs)
+    return _create_entityset(scada_dfs, "scada")
 
 
 @pytest.fixture

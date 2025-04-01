@@ -159,9 +159,8 @@ class TestZephyr:
 
 
 
-    def setup_zephyr(self, producer_step_name):
+    def setup_zephyr(self, step_num):
         zephyr = Zephyr()
-        step_num = zephyr.producer_to_step_map[producer_step_name]
 
         for i, (setters, getters) in enumerate(zephyr.step_order):
             if i < step_num:
@@ -173,7 +172,7 @@ class TestZephyr:
         return zephyr
     
     def test_initialize_class(self):
-        zephyr = self.setup_zephyr(0)
+        zephyr = self.setup_zephyr(1)
     
     def test_create_entityset(self):
         zephyr = self.setup_zephyr(1)
@@ -200,11 +199,10 @@ class TestZephyr:
         train_test_split = zephyr.get_train_test_split()
         assert train_test_split is not None
     
-    def setup_zephyr_with_base_split(self, producer_step_name):
+    def setup_zephyr_with_base_split(self, step_num):
         zephyr = self.setup_zephyr(4)
-        zephyr.set_train_test_split(**self.base_train_test_split())
-        final_step_num = zephyr.producer_to_step_map[producer_step_name]
-        for i in range(4, final_step_num):
+        zephyr.set_train_test_split(*self.base_train_test_split())
+        for i in range(5, step_num):
             setters, getters = zephyr.step_order[i]
             setter = setters[0]
             kwargs = self.kwargs[setter.__name__]

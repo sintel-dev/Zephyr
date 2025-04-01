@@ -332,6 +332,9 @@ class Zephyr:
         if y is None:
             y = self.y_train
 
+        print(X)
+        print(y)
+
         if visual:
             outputs_spec, visual_names = self._get_outputs_spec(False)
         else:
@@ -359,7 +362,10 @@ class Zephyr:
         else:
             outputs_spec = "default"
 
+        print(X)
+
         outputs = self.pipeline.predict(X, output_=outputs_spec, **kwargs)
+        print(outputs)
 
         if visual and visual_names:
             prediction = outputs[0]
