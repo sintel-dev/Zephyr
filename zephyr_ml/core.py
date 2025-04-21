@@ -108,7 +108,7 @@ class Zephyr:
         # tuple of 2 arrays: producers and attributes
         self.step_order = [
             ([self.create_entityset, self.set_entityset], [self.get_entityset]),
-            ([self.set_labeling_function], [self.get_labeling_function]),
+            # ([self.set_labeling_function], [self.get_labeling_function]),
             ([self.generate_label_times], [self.get_label_times]),
             ([self.generate_feature_matrix_and_labels, self.set_feature_matrix_and_labels], [self.get_feature_matrix_and_labels]),
             ([self.generate_train_test_split, self.set_train_test_split], [self.get_train_test_split]),
@@ -186,37 +186,49 @@ class Zephyr:
     def get_predefined_labeling_functions(self):
         return get_labeling_functions()
 
-    @guide
-    def set_labeling_function(self, name=None, func=None):
-        if name is not None:
-            labeling_fn_map = get_labeling_functions_map()
-            if name in labeling_fn_map:
-                self.labeling_function = labeling_fn_map[name]
-                return
-            else:
-                raise ValueError(
-                    f"Unrecognized name argument:{name}. Call get_predefined_labeling_functions to view predefined labeling functions"
-                )
-        elif func is not None:
-            if callable(func):
-                self.labeling_function = func
-                return
-            else:
-                raise ValueError(f"Custom function is not callable")
-        raise ValueError("No labeling function given.")
+    # @guide
+    # def set_labeling_function(self, name=None, func=None):
+    #     if name is not None:
+    #         labeling_fn_map = get_labeling_functions_map()
+    #         if name in labeling_fn_map:
+    #             self.labeling_function = labeling_fn_map[name]
+    #             return
+    #         else:
+    #             raise ValueError(
+    #                 f"Unrecognized name argument:{name}. Call get_predefined_labeling_functions to view predefined labeling functions"
+    #             )
+    #     elif func is not None:
+    #         if callable(func):
+    #             self.labeling_function = func
+    #             return
+    #         else:
+    #             raise ValueError(f"Custom function is not callable")
+    #     raise ValueError("No labeling function given.")
     
-    @guide
-    def get_labeling_function(self):
-        return self.labeling_function
+    # @guide
+    # def get_labeling_function(self):
+    #     return self.labeling_function
     
     @guide
     def generate_label_times(
-        self, num_samples=-1, subset=None, column_map={}, verbose=False, **kwargs
+        self, labeling_fn, num_samples=-1, subset=None, column_map={}, verbose=False, **kwargs
     ):
-        assert self.entityset is not None
-        assert self.labeling_function is not None
+        assert self.entityset is not None, "entityset has not been set"
+        
+        if isinstance(labeling_fn, str): # get predefined labeling function
+            labeling_fn_map = get_labeling_functions_map()
+            if labeling_fn in labeling_fn_map:
+                labeling_fn = labeling_fn_map[labeling_fn]
+            else:
+                raise ValueError(
+                    f"Unrecognized name argument:{labeling_fn}. Call get_predefined_labeling_functions to view predefined labeling functions"
+                )
 
-        labeling_function, df, meta = self.labeling_function(self.entityset, column_map)
+
+        assert callable(labeling_fn), "Labeling function is not callable"
+            
+
+        labeling_function, df, meta = labeling_fn(self.entityset, column_map)
 
         data = df
         if isinstance(subset, float) or isinstance(subset, int):
@@ -332,8 +344,6 @@ class Zephyr:
         if y is None:
             y = self.y_train
 
-        print(X)
-        print(y)
 
         if visual:
             outputs_spec, visual_names = self._get_outputs_spec(False)
