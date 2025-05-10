@@ -28,7 +28,7 @@ def get_labeling_functions():
     functions = {}
     for function in LABELING_FUNCTIONS:
         name = function.__name__
-        functions[name] = function.__doc__.split("\n")[0]
+        functions[name] = {"obj": function, "desc": function.__doc__.split("\n")[0]}
 
     return functions
 
@@ -39,6 +39,8 @@ def get_labeling_functions_map():
         name = function.__name__
         functions[name] = function
     return functions
+
+
 
 
 def get_helper_functions():

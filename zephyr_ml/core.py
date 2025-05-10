@@ -6,6 +6,7 @@ from zephyr_ml.labeling import (
     get_labeling_functions_map,
     LABELING_FUNCTIONS,
 )
+from zephyr_ml.feature_engineering import process_signals
 import composeml as cp
 from inspect import getfullargspec
 import featuretools as ft
@@ -19,7 +20,7 @@ from itertools import chain
 import logging
 import matplotlib.pyplot as plt
 from functools import wraps
-
+import inspect
 DEFAULT_METRICS = [
     "sklearn.metrics.accuracy_score",
     "sklearn.metrics.precision_score",
@@ -36,15 +37,18 @@ class GuideHandler:
 
     def __init__(self, producers_and_getters, set_methods):
         self.cur_term = 0
+        self.current_step = -1
         self.producers_and_getters = producers_and_getters
         self.set_methods = set_methods
 
         self.producer_to_step_map = {}
         self.getter_to_step_map = {}
+        
         self.terms = []
-
+        self.skipped = []
         for idx, (producers, getters) in enumerate(self.producers_and_getters):
             self.terms.append(-1)
+            self.skipped.append(False)
 
             for prod in producers:
                 self.producer_to_step_map[prod.__name__] = idx
@@ -98,6 +102,8 @@ class GuideHandler:
     def try_log_skipping_steps_warning(self, name, next_step):
         steps_skipped = self.get_steps_in_between(self.current_step, next_step)
         if len(steps_skipped) > 0:
+            for step in range(self.current_step + 1, next_step):
+                self.skipped[step] = True
             necc_steps = self.join_steps(steps_skipped)
             LOGGER.warning(f"Performing {name}. You are skipping the following steps:\n{necc_steps}")
            
@@ -115,7 +121,7 @@ class GuideHandler:
 
     def try_log_making_stale_warning(self, name, next_step):
         next_next_step = next_step + 1
-        prod_steps = f"{next_next_step}. {" or ".join(self.producers_and_getters[next_next_step][0])}"
+        prod_steps = f"{next_next_step}. {' or '.join(self.producers_and_getters[next_next_step][0])}"
         # add later set methods
         get_steps = self.join_steps(self.get_get_steps_in_between(next_step, self.current_step + 1))
 
@@ -133,7 +139,7 @@ class GuideHandler:
                         starting at or before {latest_up_to_date}")
         
     def log_get_inconsistent_warning(self, name, next_step):
-        prod_steps = f"{next_step}. {" or ".join(self.producers_and_getters[next_step][0])}"
+        prod_steps = f"{next_step}. {' or '.join(self.producers_and_getters[next_step][0])}"
         latest_up_to_date = self.get_last_up_to_date(next_step)
         LOGGER.warning(f"Unable to perform {name} because {prod_steps} has not been run yet. Run steps starting at or before {latest_up_to_date} ")
         
@@ -186,6 +192,10 @@ class GuideHandler:
         if self.terms[next_step-1] == -1: #inconsistent
             self.try_log_inconsistent_warning(name, next_step)
         else:
+            # need to include a case where performing using stale data that was skipped in current iteration
+            # overwrite current iteration's ?
+            # no not possible b/c if there is a current iteration after this step, it must have updated this step's iteration
+            # 
             self.try_log_using_stale_warning(name, next_step)
             res = self.perform_producer_step(method, *method_args, **method_kwargs)
             return res
@@ -274,7 +284,6 @@ class Zephyr:
         # tuple of 2 arrays: producers and attributes
         self.step_order = [
             ([self.generate_entityset, self.set_entityset], [self.get_entityset]),
-            # ([self.set_labeling_function], [self.get_labeling_function]),
             ([self.generate_label_times, self.set_label_times], [self.get_label_times]),
             ([self.generate_feature_matrix_and_labels, self.set_feature_matrix_and_labels], [self.get_feature_matrix_and_labels]),
             ([self.generate_train_test_split, self.set_train_test_split], [self.get_train_test_split]),
@@ -291,10 +300,26 @@ class Zephyr:
         """
         Returns the supported entityset types (PI/SCADA/Vibrations) and the required dataframes and their columns
         """
-        return VALIDATE_DATA_FUNCTIONS.keys()
+        info_map = {}
+        for es_type, val_fn in VALIDATE_DATA_FUNCTIONS.items():
+            info_map[es_type] = {"obj": es_type, "desc": " ".join((val_fn.__doc__.split()))}
+
+        return info_map
+    
+    def GET_LABELING_FUNCTIONS(self):
+        return get_labeling_functions()
+    
+    def GET_EVALUATION_METRICS(self):
+        info_map = {}
+        for metric in DEFAULT_METRICS:
+            primitive = self._get_ml_primitive(metric)
+            info_map[metric] = {"obj": primitive, "desc": primitive.metadata["description"] }
+        return info_map
 
     @guide
-    def generate_entityset(self, dfs, es_type, custom_kwargs_mapping=None):
+    def generate_entityset(self, dfs, es_type, custom_kwargs_mapping=None, 
+                           signal_dataframe_name = None, signal_column = None, signal_transformations = None, 
+                           signal_aggregations = None, signal_window_size = None, signal_replace_dataframe = False, **sigpro_kwargs):
         """
         Generate an entityset
 
@@ -309,6 +334,16 @@ class Zephyr:
         their relationships
         """
         entityset = _create_entityset(dfs, es_type, custom_kwargs_mapping)
+
+        #perform signal processing
+        if signal_dataframe_name is not None and signal_column is not None: 
+            if signal_transformations is None:
+                signal_transformations = []
+            if signal_aggregations is None:
+                signal_aggregations = []
+            process_signals(entityset, signal_dataframe_name, signal_column, signal_transformations, 
+                            signal_aggregations, signal_window_size, signal_replace_dataframe, **sigpro_kwargs)
+
         self.entityset = entityset
         return self.entityset
 
@@ -335,8 +370,7 @@ class Zephyr:
         return self.entityset
     
 
-    def GET_LABELING_FUNCTIONS(self):
-        return get_labeling_functions()
+    
 
     # @guide
     # def set_labeling_function(self, name=None, func=None):
@@ -425,9 +459,37 @@ class Zephyr:
         return self.label_times
 
     @guide
-    def generate_feature_matrix_and_labels(self, **kwargs):
+    def generate_feature_matrix_and_labels(self, target_dataframe_name = None, instance_ids = None, 
+                                           agg_primitives = None, trans_primitives = None, groupby_trans_primitives = None, 
+                                           allowed_paths = None, max_depth = 2, ignore_dataframes = None, ignore_columns=None, 
+                                           primitive_options=None, seed_features=None, 
+                                           drop_contains=None, drop_exact=None, where_primitives=None, max_features=-1, 
+                                           cutoff_time_in_index=False, save_progress=None, features_only=False, training_window=None, 
+                                           approximate=None, chunk_size=None, n_jobs=1, dask_kwargs=None, verbose=False, return_types=None, 
+                                           progress_callback=None, include_cutoff_time=True,       
+                                            
+                                            signal_dataframe_name = None, signal_column = None, signal_transformations = None, 
+                                            signal_aggregations = None, signal_window_size = None, signal_replace_dataframe = False, **sigpro_kwargs):
+        
+        # perform signal processing
+        if signal_dataframe_name is not None and signal_column is not None: 
+            if signal_transformations is None:
+                signal_transformations = []
+            if signal_aggregations is None:
+                signal_aggregations = []
+                process_signals(self.entityset, signal_dataframe_name, signal_column, signal_transformations, 
+                            signal_aggregations, signal_window_size, signal_replace_dataframe, **sigpro_kwargs)
+        
         feature_matrix, features = ft.dfs(
-            entityset=self.entityset, cutoff_time=self.label_times, **kwargs
+            entityset=self.entityset, cutoff_time=self.label_times,
+            target_dataframe_name = target_dataframe_name, instance_ids =instance_ids, 
+            agg_primitives = agg_primitives, trans_primitives = trans_primitives, groupby_trans_primitives = groupby_trans_primitives, 
+            allowed_paths = allowed_paths, max_depth = max_depth, ignore_dataframes = ignore_dataframes, ignore_columns=ignore_columns, 
+            primitive_options=primitive_options, seed_features=seed_features, 
+            drop_contains=drop_contains, drop_exact=drop_exact, where_primitives=where_primitives, max_features=max_features, 
+            cutoff_time_in_index=cutoff_time_in_index, save_progress=save_progress, features_only=features_only, training_window=training_window, 
+            approximate=approximate, chunk_size=chunk_size, n_jobs=n_jobs, dask_kwargs=dask_kwargs, verbose=verbose, return_types=return_types, 
+            progress_callback=progress_callback, include_cutoff_time=include_cutoff_time, 
         )
         self.feature_matrix_and_labels = self._clean_feature_matrix(feature_matrix)
         self.features = features
@@ -546,7 +608,8 @@ class Zephyr:
 
         return outputs
     
-
+    
+    
 
     @guide
     def evaluate(self, X=None, y=None,metrics=None, global_args = None, local_args = None, global_mapping = None, local_mapping = None):
@@ -656,6 +719,7 @@ class Zephyr:
 
 if __name__ == "__main__":
     obj = Zephyr()
+    print(obj.GET_EVALUATION_METRICS())
     alarms_df = pd.DataFrame(
         {
             "COD_ELEMENT": [0, 0],
@@ -791,40 +855,40 @@ if __name__ == "__main__":
         }
     )
 
-    obj.create_entityset(
-        {
-            "alarms": alarms_df,
-            "stoppages": stoppages_df,
-            "notifications": notifications_df,
-            "work_orders": work_orders_df,
-            "turbines": turbines_df,
-            "pidata": pidata_df,
-        },
-        "pidata",
-    )
+    # obj.create_entityset(
+    #     {
+    #         "alarms": alarms_df,
+    #         "stoppages": stoppages_df,
+    #         "notifications": notifications_df,
+    #         "work_orders": work_orders_df,
+    #         "turbines": turbines_df,
+    #         "pidata": pidata_df,
+    #     },
+    #     "pidata",
+    # )
 
     # obj.set_entityset(entityset_path = "/Users/raymondpan/zephyr/Zephyr-repo/brake_pad_es", es_type = 'scada')
     
     # obj.set_labeling_function(name="brake_pad_presence")
 
-    obj.generate_label_times(labeling_fn="brake_pad_presence", num_samples=10, gap="20d")
-    # print(obj.get_label_times())
+    # obj.generate_label_times(labeling_fn="brake_pad_presence", num_samples=10, gap="20d")
+    # # print(obj.get_label_times())
 
 
-    obj.generate_feature_matrix_and_labels(
-        target_dataframe_name="turbines",
-        cutoff_time_in_index=True,
-        agg_primitives=["count", "sum", "max"],
-        verbose = True
-    )
+    # obj.generate_feature_matrix_and_labels(
+    #     target_dataframe_name="turbines",
+    #     cutoff_time_in_index=True,
+    #     agg_primitives=["count", "sum", "max"],
+    #     verbose = True
+    # )
 
-    print(obj.get_feature_matrix_and_labels)
+    # print(obj.get_feature_matrix_and_labels)
 
-    obj.generate_train_test_split()
-    add_primitives_path(
-        path="/Users/raymondpan/zephyr/Zephyr-repo/zephyr_ml/primitives/jsons"
-    )
-    obj.set_and_fit_pipeline()
+    # obj.generate_train_test_split()
+    # add_primitives_path(
+    #     path="/Users/raymondpan/zephyr/Zephyr-repo/zephyr_ml/primitives/jsons"
+    # )
+    # obj.set_and_fit_pipeline()
 
 
-    obj.evaluate()
+    # obj.evaluate()

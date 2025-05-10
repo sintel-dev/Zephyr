@@ -208,18 +208,28 @@ def _validate_data(dfs, es_type, es_kwargs):
 
 
 def validate_scada_data(dfs, new_kwargs_mapping=None):
+    """
+    SCADA data is signal data from the Original Equipment Manufacturer Supervisory Control 
+    And Data Acquisition (OEM-SCADA) system, a signal data source.
+    """
     entity_kwargs = get_mapped_kwargs("scada", new_kwargs_mapping)
     _validate_data(dfs, "scada", entity_kwargs)
     return entity_kwargs
 
 
 def validate_pidata_data(dfs, new_kwargs_mapping=None):
+    """
+    PI data is signal data from the operator's historical Plant Information (PI) system.
+    """
     entity_kwargs = get_mapped_kwargs("pidata", new_kwargs_mapping)
     _validate_data(dfs, "pidata", entity_kwargs)
     return entity_kwargs
 
 
 def validate_vibrations_data(dfs, new_kwargs_mapping=None):
+    """
+    Vibrations data is vibrations data collected on Planetary gearboxes in turbines.
+    """
     entities = ["vibrations"]
 
     pidata_kwargs, scada_kwargs = {}, {}
