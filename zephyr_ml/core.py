@@ -545,34 +545,60 @@ class Zephyr:
             return prediction, dict(zip(visual_names, outputs[-len(visual_names) :]))
 
         return outputs
+    
+
 
     @guide
-    def evaluate(self, X=None, y=None,metrics=None, additional_args = None, context_mapping = None, metric_args_mapping = None):
+    def evaluate(self, X=None, y=None,metrics=None, global_args = None, local_args = None, global_mapping = None, local_mapping = None):
         if X is None:
             X = self.X_test
         if y is None:
             y = self.y_test
 
-        # may have multiple proba_steps and multiple produce args
-      
-        # context_0 = self.pipeline.predict(X, output_=0)
-        # y_proba = context_0["y_pred"][::,  1]
         final_context = self.pipeline.predict(X, output_=-1)
 
+        # remap items, if any
+        if global_mapping is not None:
+            for cur, new in global_mapping.items():
+                if cur in final_context:
+                    cur_item = final_context.pop(cur)
+                    final_context[new] = cur_item
+
+    
         if metrics is None:
             metrics = DEFAULT_METRICS
-        if metric_args is None:
-            metric_args = {}
+
+        if global_args is None:
+            global_args = {}
+        
+        if local_args is None:
+            local_args = {}
+
+        if local_mapping is None:
+            local_mapping = {}
+
 
         results = {}
         for metric in metrics:
             try:
                 metric_primitive = self._get_ml_primitive(metric)
-                additional_kwargs = {}
-                if metric_primitive.name in metric_args:
-                    additional_kwargs = metric_args[metric_primitive.name]
+                
+                if metric in local_mapping:
+                    metric_context = {}
+                    metric_mapping = local_mapping[metric]
+                    for cur, item in final_context.items():
+                        new = metric_mapping.get(cur, cur)
+                        metric_context[new] = item
+                else:
+                    metric_context = final_context
 
-                res = metric_primitive.produce(y_true = self.y_test, **final_context, **additional_kwargs)
+    
+                if metric in local_args:
+                    metric_args = local_args[metric]
+                else:
+                    metric_args = {}
+
+                res = metric_primitive.produce(y_true = self.y_test, **metric_context, **metric_args)
                 results[metric_primitive.name] = res
             except Exception as e:
                 LOGGER.error(f"Unable to run evaluation metric: {metric_primitive.name}", exc_info = e)
