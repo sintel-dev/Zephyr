@@ -3,7 +3,7 @@
     "contributors": [
         "Raymond Pan <rpan@mit.edu>"
     ],
-    "description": "Plot confusion matrix.",
+    "description": "Create and plot confusion matrix.",
     "classifiers": {
         "type": "helper"
     },

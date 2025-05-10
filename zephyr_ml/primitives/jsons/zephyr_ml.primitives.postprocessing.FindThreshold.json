@@ -18,7 +18,7 @@
                 "type": "ndarray"
             },
             {
-                "name": "y_pred",
+                "name": "y_proba",
                 "type": "ndarray"
             }
         ]
@@ -27,13 +27,13 @@
         "method": "apply_threshold",
         "args": [
             {
-                "name": "y_pred",
+                "name": "y_proba",
                 "type": "ndarray"
             }
         ],
         "output": [
             {
-                "name": "y",
+                "name": "y_pred",
                 "type": "ndarray"
             },
             {

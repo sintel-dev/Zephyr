@@ -36,7 +36,7 @@
         ],
         "output": [
             {
-                "name": "y",
+                "name": "y_proba",
                 "type": "array"
             }
         ]

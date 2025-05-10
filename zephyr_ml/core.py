@@ -31,60 +31,224 @@ DEFAULT_METRICS = [
 
 LOGGER = logging.getLogger(__name__)
 
+
+class GuideHandler:
+
+    def __init__(self, producers_and_getters, set_methods):
+        self.cur_term = 0
+        self.producers_and_getters = producers_and_getters
+        self.set_methods = set_methods
+
+        self.producer_to_step_map = {}
+        self.getter_to_step_map = {}
+        self.terms = []
+
+        for idx, (producers, getters) in enumerate(self.producers_and_getters):
+            self.terms.append(-1)
+
+            for prod in producers:
+                self.producer_to_step_map[prod.__name__] = idx
+
+            for get in getters:
+                self.getter_to_step_map[get.__name__] = idx
+
+    def get_necessary_steps(self, actual_next_step):
+        step_strs = []
+        for step in range(self.current_step, actual_next_step):
+            option_strs = []
+            for opt in self.producers_and_getters[step][0]:
+                option_strs.append(opt.__name__)
+            step_strs.append(f"{step}. {' or '.join(option_strs)}")
+        return "\n".join(step_strs)
+    
+    def get_get_steps_in_between(self, cur_step, next_step):
+        step_strs = []
+        for step in range(cur_step + 1, next_step):
+            step_strs.append(f"{step} {self.producers_and_getters[step][1][0]}")
+        return step_strs
+    
+    def get_last_up_to_date(self, next_step):
+        latest_up_to_date = 0
+        for step in range(next_step):
+            if self.terms[step] == self.cur_term:
+                latest_up_to_date = step
+        return latest_up_to_date
+
+    
+    def join_steps(self, step_strs):
+        return "\n".join(step_strs)
+    
+    def get_steps_in_between(self, cur_step, next_step):
+        step_strs = []
+        for step in range(cur_step+1, next_step):
+            option_strs = []
+            for opt in self.producers_and_getters[step][0]:
+                option_strs.append(opt.__name__)
+            step_strs.append(f"{step}. {' or '.join(option_strs)}")
+        return step_strs
+    
+    def perform_producer_step(self, method, *method_args, **method_kwargs):
+        step_num = self.producer_to_step_map[method.__name__]
+        res = method(*method_args, **method_kwargs)
+        self.current_step = step_num
+        self.terms[step_num] = self.cur_term
+        return res
+    
+    
+    def try_log_skipping_steps_warning(self, name, next_step):
+        steps_skipped = self.get_steps_in_between(self.current_step, next_step)
+        if len(steps_skipped) > 0:
+            necc_steps = self.join_steps(steps_skipped)
+            LOGGER.warning(f"Performing {name}. You are skipping the following steps:\n{necc_steps}")
+           
+
+    def try_log_using_stale_warning(self, name, next_step):
+        latest_up_to_date = self.get_last_up_to_date(next_step)
+        steps_needed = self.get_steps_in_between(latest_up_to_date-1, next_step)
+        if len(steps_needed) >0:
+            necc_steps = self.join_steps(steps_needed)
+            LOGGER.warning(f"Performing {name}. You are in a stale state and \
+                        using potentially stale data to perform this step. \
+                        Re-run the following steps to return to a present state:\n: \
+                        {steps_needed}")
+        
+
+    def try_log_making_stale_warning(self, name, next_step):
+        next_next_step = next_step + 1
+        prod_steps = f"{next_next_step}. {" or ".join(self.producers_and_getters[next_next_step][0])}"
+        # add later set methods
+        get_steps = self.join_steps(self.get_get_steps_in_between(next_step, self.current_step + 1))
+
+
+        LOGGER.warning(f"Performing {name}. You are beginning a new iteration. Any data returned \
+                       by the following get methods will be considered stale:\n{get_steps}. To continue with this iteration, please perform:\n{prod_steps}")
+
+    # stale must be before b/c user must have regressed with progress that contains skips
+    # return set method, and next possible up to date key method
+    def try_log_inconsistent_warning(self, name, next_step):
+        set_method_str= f"{self.producers_and_getters[next_step][0][1].__name__}"
+        latest_up_to_date = self.get_last_up_to_date(next_step)
+        LOGGER.warning(f"Unable to perform {name} because some steps have been skipped. \
+                       You can call the corresponding set method: {set_method_str} or re run steps \
+                        starting at or before {latest_up_to_date}")
+        
+    def log_get_inconsistent_warning(self, name, next_step):
+        prod_steps = f"{next_step}. {" or ".join(self.producers_and_getters[next_step][0])}"
+        latest_up_to_date = self.get_last_up_to_date(next_step)
+        LOGGER.warning(f"Unable to perform {name} because {prod_steps} has not been run yet. Run steps starting at or before {latest_up_to_date} ")
+        
+
+    def log_get_stale_warning(self, name, next_step):
+        latest_up_to_date = self.get_last_up_to_date(next_step)
+        LOGGER.warning(f"Performing {name}. This data is potentially stale. \
+                       Re-run steps starting at or before {latest_up_to_date} to ensure data is up to date.")
+        
+
+    # tries to perform step if possible -> warns that data might be stale    
+    def try_perform_forward_producer_step(self, method, *method_args, **method_kwargs):
+        name = method.__name__
+        next_step = self.producer_to_step_map[name]
+        if name in self.set_methods:
+            self.try_log_skipping_steps_warning(name, next_step)
+        # next_step == 0, set method (already warned), or previous step is up to term
+        res = self.perform_producer_step(method, *method_args, **method_kwargs)
+        return res
+    
+
+    # next_step == 0, set method, or previous step is up to term
+    def try_perform_backward_producer_step(self, method, *method_args, **method_kwargs):
+        name = method.__name__
+        next_step = self.producer_to_step_map[name]
+        self.try_log_making_stale_warning(next_step)
+        self.cur_term +=1
+        for i in range(0, next_step):
+            if self.terms[i] != -1:
+                self.terms[i] = self.cur_term
+        res = self.perform_producer_step(method, *method_args, **method_kwargs)
+        return res
+
+
+    def try_perform_producer_step(self, method, *method_args, **method_kwargs):
+        name = method.__name__
+        next_step = self.producer_to_step_map[name]
+        if next_step >= self.current_step:
+            res = self.try_perform_forward_producer_step(method, *method_args, **method_kwargs)
+            return res
+        else:
+            res = self.try_perform_backward_producer_step(method, *method_args, **method_kwargs)
+            return res
+
+
+    # dont update current step or terms
+    def try_perform_stale_or_inconsistent_producer_step(self, method, *method_args, **method_kwargs):
+        name = method.__name__
+        next_step = self.producer_to_step_map[name]
+        if self.terms[next_step-1] == -1: #inconsistent
+            self.try_log_inconsistent_warning(name, next_step)
+        else:
+            self.try_log_using_stale_warning(name, next_step)
+            res = self.perform_producer_step(method, *method_args, **method_kwargs)
+            return res
+
+
+    
+
+    
+
+    def try_perform_getter_step(self, method, *method_args, **method_kwargs):
+        name = method.__name__
+        # either inconsistent, stale, or up to date
+        step_num = self.getter_to_step_map[name]
+        step_term = self.terms[step_num]
+        if step_term == -1:
+            self.log_get_inconsistent_warning(step_num)
+        elif step_term == self.cur_term:
+            res = method(*method_args, **method_kwargs)
+            return res
+        else:
+            self.log_get_stale_warning(step_num)
+            res = method(*method_args, **method_kwargs)
+            return res
+
+
+
+
+    
+
+    def guide_step(self, method, *method_args, **method_kwargs):
+        method_name = method.__name__
+        if method_name in self.producer_to_step_map:
+            #up-todate
+            next_step = self.producer_to_step_map[method_name]
+            if method_name in self.set_methods or next_step == 0 or self.terms[next_step-1] == self.cur_term:
+                res = self.try_perform_producer_step(method, *method_args, **method_kwargs)
+                return res
+            else: #stale or inconsistent
+                res = self.try_perform_stale_or_inconsistent_producer_step(method, *method_args, **method_kwargs)
+                return res
+        elif method_name in self.getter_to_step_map:
+            res = self.try_perform_getter_step(method, *method_args, **method_kwargs)
+            return res
+        else:
+            print(f"Method {method_name} does not need to be wrapped")
+
+
+
+
+
+
+        
+
+    
+
+
+
+
 def guide(method):
 
     @wraps(method)
     def guided_step(self, *method_args, **method_kwargs):
-        expected_next_step = self.current_step + 1
-        method_name = method.__name__
-        if method_name in self.producer_to_step_map:
-            actual_next_step = self.producer_to_step_map[method_name]
-            if actual_next_step > expected_next_step:
-                necessary_steps_str = self._get_necessary_steps(actual_next_step)
-                LOGGER.error(f"Required steps have been SKIPPED! Unable to run {method_name}. Please perform the following steps first:\n{necessary_steps_str}")
-                return
-            elif actual_next_step < self.current_step: #regressing, make stale data, warn
-                try:
-                    necessary_steps_str = self._get_necessary_steps(actual_next_step)
-                    res = method(self, *method_args, **method_kwargs)
-                    LOGGER.warning(f"The last run step was {self.current_step}. The following methods will return STALE data. Please perform the following steps in order to get up to date:\n{necessary_steps_str}")
-                    self.current_step = actual_next_step
-                    return res
-                except Exception as e:
-                    LOGGER.error(f"{method_name} threw an exception", exc_info = e)
-                    return
-            else:
-                try:
-                    res = method(self, *method_args, **method_kwargs)
-                    self.current_step = actual_next_step
-
-                    return res
-                except Exception as e:
-                    LOGGER.error(f"{method_name} threw an exception", exc_info = e)
-                
-        elif method_name in self.getter_to_step_map:
-            actual_next_step = self.getter_to_step_map[method_name]
-            if actual_next_step > expected_next_step:
-                try:
-                    res = method(self, *method_args, **method_kwargs)
-                    necessary_steps_str = self._get_necessary_steps(actual_next_step)
-                    if res is None:
-                        LOGGER.error(f"Required steps have been SKIPPED!. {method_name} does not have a value to return. Please perform the following steps in order before running this method:\n{necessary_steps_str}")
-                    else:
-                        LOGGER.warning(f"This data may be STALE. Please perform the following steps in order to ensure the response is up to date:\n{necessary_steps_str}")
-                        return res
-                except Exception as e:
-                    LOGGER.error(f"{method_name} threw an exception", exc_info = e)
-                    return
-            else:
-                try:
-                    res = method(self, *method_args, **method_kwargs)
-                    return res
-                except Exception as e:
-                    LOGGER.error(f"{method_name} threw an exception", exc_info = e)
-        else:
-            print(f"Method {method_name} does not need to be wrapped")
-
+        return self.guide_handler.guide_step(method, *method_args, **method_kwargs)
 
     return guided_step
 
@@ -104,50 +268,38 @@ class Zephyr:
         self.is_fitted = None
         self.results = None
 
+
+        
         self.current_step = -1
         # tuple of 2 arrays: producers and attributes
         self.step_order = [
-            ([self.create_entityset, self.set_entityset], [self.get_entityset]),
+            ([self.generate_entityset, self.set_entityset], [self.get_entityset]),
             # ([self.set_labeling_function], [self.get_labeling_function]),
-            ([self.generate_label_times], [self.get_label_times]),
+            ([self.generate_label_times, self.set_label_times], [self.get_label_times]),
             ([self.generate_feature_matrix_and_labels, self.set_feature_matrix_and_labels], [self.get_feature_matrix_and_labels]),
             ([self.generate_train_test_split, self.set_train_test_split], [self.get_train_test_split]),
-            ([self.set_and_fit_pipeline], [self.get_pipeline, self.get_pipeline_hyperparameters]),
+            ([self.fit_pipeline, self.set_fitted_pipeline], [self.get_fitted_pipeline]),
             ([self.predict, self.evaluate], [])
         ]
-
-        self.producer_to_step_map = {}
-        self.getter_to_step_map = {}
-        for idx, (producers, getters) in enumerate(self.step_order):
-            for prod in producers:
-                self.producer_to_step_map[prod.__name__] = idx
-            for get in getters:
-                self.getter_to_step_map[get.__name__] = idx
+        self.set_methods = set([self.set_entityset.__name__, self.set_label_times.__name__, self.set_feature_matrix_and_labels.__name__, self.set_train_test_split.__name__, self.set_fitted_pipeline.__name__])
+        self.guide_handler = GuideHandler(self.step_order, self.set_methods) 
     
-    def _get_necessary_steps(self, actual_step):
-        step_strs = []
-        for step in range(self.current_step, actual_step):
-            option_strs = []
-            for opt in self.step_order[step][0]:
-                option_strs.append(opt.__name__)
-            step_strs.append(f"{step}. {' or '.join(option_strs)}")
-        return "\n".join(step_strs)
 
             
 
-    def get_entityset_types(self):
+    def GET_ENTITYSET_TYPES(self):
         """
         Returns the supported entityset types (PI/SCADA/Vibrations) and the required dataframes and their columns
         """
         return VALIDATE_DATA_FUNCTIONS.keys()
 
     @guide
-    def create_entityset(self, data_paths, es_type, custom_kwargs_mapping=None):
+    def generate_entityset(self, dfs, es_type, custom_kwargs_mapping=None):
         """
         Generate an entityset
 
         Args:
-        data_paths ( dict ): Dictionary mapping entity names to the pandas
+        dfs ( dict ): Dictionary mapping entity names to the pandas
         dataframe for that that entity
         es_type (str): type of signal data , either SCADA or PI
         custom_kwargs_mapping ( dict ): Updated keyword arguments to be used
@@ -156,7 +308,7 @@ class Zephyr:
         featuretools.EntitySet that contains the data passed in and
         their relationships
         """
-        entityset = _create_entityset(data_paths, es_type, custom_kwargs_mapping)
+        entityset = _create_entityset(dfs, es_type, custom_kwargs_mapping)
         self.entityset = entityset
         return self.entityset
 
@@ -183,7 +335,7 @@ class Zephyr:
         return self.entityset
     
 
-    def get_predefined_labeling_functions(self):
+    def GET_LABELING_FUNCTIONS(self):
         return get_labeling_functions()
 
     # @guide
@@ -260,6 +412,11 @@ class Zephyr:
         self.label_times = label_times
 
         return label_times, meta
+    
+    @guide
+    def set_label_times(self, label_times):
+        assert(isinstance(label_times, cp.LabelTimes))
+        self.label_times = label_times
 
     @guide
     def get_label_times(self, visualize = True):
@@ -295,9 +452,16 @@ class Zephyr:
         train_size=None,
         random_state=None,
         shuffle=True,
-        stratify=None,
+        stratify=False,
     ):
         feature_matrix, labels = self.feature_matrix_and_labels
+        
+        if not isinstance(stratify, list):
+            if stratify:
+                stratify = labels
+            else:
+                stratify = None
+        
         X_train, X_test, y_train, y_test = train_test_split(
             feature_matrix,
             labels,
@@ -327,17 +491,17 @@ class Zephyr:
             return None
         return self.X_train, self.X_test, self.y_train, self.y_test
 
-    def get_predefined_pipelines(self):
-        pass
-
     
     
     @guide
-    def set_and_fit_pipeline(
+    def set_fitted_pipeline(self, pipeline):
+        self.pipeline = pipeline
+    
+    @guide
+    def fit_pipeline(
         self, pipeline = "xgb_classifier", pipeline_hyperparameters=None, X=None, y=None, visual=False, **kwargs
     ):  # kwargs indicate the parameters of the current pipeline
         self.pipeline = self._get_mlpipeline(pipeline, pipeline_hyperparameters)
-        self.pipeline_hyperparameters = self.pipeline.get_hyperparameters()
 
         if X is None:
             X = self.X_train
@@ -356,7 +520,7 @@ class Zephyr:
             return dict(zip(visual_names, outputs))
         
     @guide
-    def get_pipeline(self):
+    def get_fitted_pipeline(self):
         return self.pipeline
 
     @guide
@@ -372,7 +536,6 @@ class Zephyr:
         else:
             outputs_spec = "default"
 
-        print(X)
 
         outputs = self.pipeline.predict(X, output_=outputs_spec, **kwargs)
         print(outputs)
@@ -384,26 +547,32 @@ class Zephyr:
         return outputs
 
     @guide
-    def evaluate(self, X=None, y=None, metrics=None, show_plots = True):
+    def evaluate(self, X=None, y=None,metrics=None, additional_args = None, context_mapping = None, metric_args_mapping = None):
         if X is None:
             X = self.X_test
         if y is None:
             y = self.y_test
 
-        context_0 = self.pipeline.predict(X, output_=0)
-        y_proba = context_0["y_pred"][::, 1]
-        y_pred = self.pipeline.predict(start_=1, **context_0)
+        # may have multiple proba_steps and multiple produce args
+      
+        # context_0 = self.pipeline.predict(X, output_=0)
+        # y_proba = context_0["y_pred"][::,  1]
+        final_context = self.pipeline.predict(X, output_=-1)
 
         if metrics is None:
             metrics = DEFAULT_METRICS
+        if metric_args is None:
+            metric_args = {}
 
         results = {}
         for metric in metrics:
             try:
                 metric_primitive = self._get_ml_primitive(metric)
-                res = metric_primitive.produce(y_pred=y_pred, y_proba=y_proba, y_true=y)
-                if show_plots:
-                    plt.show()
+                additional_kwargs = {}
+                if metric_primitive.name in metric_args:
+                    additional_kwargs = metric_args[metric_primitive.name]
+
+                res = metric_primitive.produce(y_true = self.y_test, **final_context, **additional_kwargs)
                 results[metric_primitive.name] = res
             except Exception as e:
                 LOGGER.error(f"Unable to run evaluation metric: {metric_primitive.name}", exc_info = e)
@@ -596,24 +765,24 @@ if __name__ == "__main__":
         }
     )
 
-    # obj.create_entityset(
-    #     {
-    #         "alarms": alarms_df,
-    #         "stoppages": stoppages_df,
-    #         "notifications": notifications_df,
-    #         "work_orders": work_orders_df,
-    #         "turbines": turbines_df,
-    #         "pidata": pidata_df,
-    #     },
-    #     "pidata",
-    # )
+    obj.create_entityset(
+        {
+            "alarms": alarms_df,
+            "stoppages": stoppages_df,
+            "notifications": notifications_df,
+            "work_orders": work_orders_df,
+            "turbines": turbines_df,
+            "pidata": pidata_df,
+        },
+        "pidata",
+    )
 
-    obj.set_entityset(entityset_path = "/Users/raymondpan/zephyr/Zephyr-repo/brake_pad_es", es_type = 'scada')
+    # obj.set_entityset(entityset_path = "/Users/raymondpan/zephyr/Zephyr-repo/brake_pad_es", es_type = 'scada')
     
-    obj.set_labeling_function(name="brake_pad_presence")
+    # obj.set_labeling_function(name="brake_pad_presence")
 
-    obj.generate_label_times(num_samples=10, gap="20d")
-    print(obj.get_label_times())
+    obj.generate_label_times(labeling_fn="brake_pad_presence", num_samples=10, gap="20d")
+    # print(obj.get_label_times())
 
 
     obj.generate_feature_matrix_and_labels(

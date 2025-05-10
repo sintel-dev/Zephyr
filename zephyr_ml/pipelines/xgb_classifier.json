@@ -13,11 +13,6 @@
             "y_true": "y"
         }
     },
-    "output_names": {
-        "xgboost.XGBClassifier#1": {
-            "y": "y_pred"
-        }
-    },
     "outputs": {
         "default": [
             {
