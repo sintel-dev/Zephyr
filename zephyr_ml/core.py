@@ -91,9 +91,9 @@ class GuideHandler:
             step_strs.append(f"{step}. {' or '.join(option_strs)}")
         return step_strs
     
-    def perform_producer_step(self, method, *method_args, **method_kwargs):
+    def perform_producer_step(self, zephyr, method, *method_args, **method_kwargs):
         step_num = self.producer_to_step_map[method.__name__]
-        res = method(*method_args, **method_kwargs)
+        res = method(zephyr, *method_args, **method_kwargs)
         self.current_step = step_num
         self.terms[step_num] = self.cur_term
         return res
@@ -151,18 +151,18 @@ class GuideHandler:
         
 
     # tries to perform step if possible -> warns that data might be stale    
-    def try_perform_forward_producer_step(self, method, *method_args, **method_kwargs):
+    def try_perform_forward_producer_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
         next_step = self.producer_to_step_map[name]
         if name in self.set_methods:
             self.try_log_skipping_steps_warning(name, next_step)
         # next_step == 0, set method (already warned), or previous step is up to term
-        res = self.perform_producer_step(method, *method_args, **method_kwargs)
+        res = self.perform_producer_step(zephyr, method, *method_args, **method_kwargs)
         return res
     
 
     # next_step == 0, set method, or previous step is up to term
-    def try_perform_backward_producer_step(self, method, *method_args, **method_kwargs):
+    def try_perform_backward_producer_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
         next_step = self.producer_to_step_map[name]
         self.try_log_making_stale_warning(next_step)
@@ -170,23 +170,23 @@ class GuideHandler:
         for i in range(0, next_step):
             if self.terms[i] != -1:
                 self.terms[i] = self.cur_term
-        res = self.perform_producer_step(method, *method_args, **method_kwargs)
+        res = self.perform_producer_step(zephyr, method, *method_args, **method_kwargs)
         return res
 
 
-    def try_perform_producer_step(self, method, *method_args, **method_kwargs):
+    def try_perform_producer_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
         next_step = self.producer_to_step_map[name]
         if next_step >= self.current_step:
-            res = self.try_perform_forward_producer_step(method, *method_args, **method_kwargs)
+            res = self.try_perform_forward_producer_step(zephyr, method, *method_args, **method_kwargs)
             return res
         else:
-            res = self.try_perform_backward_producer_step(method, *method_args, **method_kwargs)
+            res = self.try_perform_backward_producer_step(zephyr, method, *method_args, **method_kwargs)
             return res
 
 
     # dont update current step or terms
-    def try_perform_stale_or_inconsistent_producer_step(self, method, *method_args, **method_kwargs):
+    def try_perform_stale_or_inconsistent_producer_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
         next_step = self.producer_to_step_map[name]
         if self.terms[next_step-1] == -1: #inconsistent
@@ -197,7 +197,7 @@ class GuideHandler:
             # no not possible b/c if there is a current iteration after this step, it must have updated this step's iteration
             # 
             self.try_log_using_stale_warning(name, next_step)
-            res = self.perform_producer_step(method, *method_args, **method_kwargs)
+            res = self.perform_producer_step(zephyr, method, *method_args, **method_kwargs)
             return res
 
 
@@ -205,7 +205,7 @@ class GuideHandler:
 
     
 
-    def try_perform_getter_step(self, method, *method_args, **method_kwargs):
+    def try_perform_getter_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
         # either inconsistent, stale, or up to date
         step_num = self.getter_to_step_map[name]
@@ -213,11 +213,11 @@ class GuideHandler:
         if step_term == -1:
             self.log_get_inconsistent_warning(step_num)
         elif step_term == self.cur_term:
-            res = method(*method_args, **method_kwargs)
+            res = method(zephyr, *method_args, **method_kwargs)
             return res
         else:
             self.log_get_stale_warning(step_num)
-            res = method(*method_args, **method_kwargs)
+            res = method(zephyr, *method_args, **method_kwargs)
             return res
 
 
@@ -225,19 +225,19 @@ class GuideHandler:
 
     
 
-    def guide_step(self, method, *method_args, **method_kwargs):
+    def guide_step(self, zephyr, method, *method_args, **method_kwargs):
         method_name = method.__name__
         if method_name in self.producer_to_step_map:
             #up-todate
             next_step = self.producer_to_step_map[method_name]
             if method_name in self.set_methods or next_step == 0 or self.terms[next_step-1] == self.cur_term:
-                res = self.try_perform_producer_step(method, *method_args, **method_kwargs)
+                res = self.try_perform_producer_step(zephyr, method, *method_args, **method_kwargs)
                 return res
             else: #stale or inconsistent
-                res = self.try_perform_stale_or_inconsistent_producer_step(method, *method_args, **method_kwargs)
+                res = self.try_perform_stale_or_inconsistent_producer_step(zephyr, method, *method_args, **method_kwargs)
                 return res
         elif method_name in self.getter_to_step_map:
-            res = self.try_perform_getter_step(method, *method_args, **method_kwargs)
+            res = self.try_perform_getter_step(zephyr, method, *method_args, **method_kwargs)
             return res
         else:
             print(f"Method {method_name} does not need to be wrapped")
@@ -258,7 +258,7 @@ def guide(method):
 
     @wraps(method)
     def guided_step(self, *method_args, **method_kwargs):
-        return self.guide_handler.guide_step(method, *method_args, **method_kwargs)
+        return self.guide_handler.guide_step(self, method, *method_args, **method_kwargs)
 
     return guided_step
 
@@ -280,9 +280,8 @@ class Zephyr:
 
 
         
-        self.current_step = -1
         # tuple of 2 arrays: producers and attributes
-        self.step_order = [
+        step_order = [
             ([self.generate_entityset, self.set_entityset], [self.get_entityset]),
             ([self.generate_label_times, self.set_label_times], [self.get_label_times]),
             ([self.generate_feature_matrix_and_labels, self.set_feature_matrix_and_labels], [self.get_feature_matrix_and_labels]),
@@ -290,8 +289,8 @@ class Zephyr:
             ([self.fit_pipeline, self.set_fitted_pipeline], [self.get_fitted_pipeline]),
             ([self.predict, self.evaluate], [])
         ]
-        self.set_methods = set([self.set_entityset.__name__, self.set_label_times.__name__, self.set_feature_matrix_and_labels.__name__, self.set_train_test_split.__name__, self.set_fitted_pipeline.__name__])
-        self.guide_handler = GuideHandler(self.step_order, self.set_methods) 
+        set_methods = set([self.set_entityset.__name__, self.set_label_times.__name__, self.set_feature_matrix_and_labels.__name__, self.set_train_test_split.__name__, self.set_fitted_pipeline.__name__])
+        self.guide_handler = GuideHandler(step_order, set_methods) 
     
 
             
@@ -601,7 +600,6 @@ class Zephyr:
 
         outputs = self.pipeline.predict(X, output_=outputs_spec, **kwargs)
         print(outputs)
-
         if visual and visual_names:
             prediction = outputs[0]
             return prediction, dict(zip(visual_names, outputs[-len(visual_names) :]))

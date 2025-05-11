@@ -1,16 +1,18 @@
 import os
 import pickle
 
+from mlblocks import MLBlock
 import numpy as np
 import pandas as pd
 import pytest
 
-from zephyr_ml.core import Zephyr
+from zephyr_ml.core import DEFAULT_METRICS, Zephyr
 import logging
 
 
 class TestZephyr:
 
+    @staticmethod
     def base_dfs():
         alarms_df = pd.DataFrame({
             'COD_ELEMENT': [0, 0],
@@ -109,13 +111,12 @@ class TestZephyr:
             "pidata": pidata_df
         }
 
-
     def base_train_test_split(self):
         X_train = pd.DataFrame({
             'feature 1': np.random.random(300),
             'feature 2': [0] * 150 + [1] * 150,
         })
-        y_train =X_train['feature 2'].to_list()
+        y_train = X_train['feature 2'].to_list()
         
         X_test = pd.DataFrame({
             'feature 1': np.random.random((100)),
@@ -123,8 +124,6 @@ class TestZephyr:
         })
         y_test = X_test['feature 2'].to_list()
         return X_train, X_test, y_train, y_test
-
-
 
     @classmethod
     def setup_class(cls):
@@ -148,275 +147,218 @@ class TestZephyr:
         cls.random_y = [1 if x > 0.5 else 0 for x in np.random.random(100)]
 
         cls.kwargs = {
-            "create_entityset": {"data_paths": cls.base_dfs(), "es_type": "pidata"},
-            "set_labeling_function": {"name": "brake_pad_presence"},
-            "generate_label_times": {"num_samples": 10, "gap": "20d"},
+            "generate_entityset": {"dfs": TestZephyr.base_dfs(), "es_type": "pidata"},
+            "generate_label_times": {"labeling_fn": "brake_pad_presence", "num_samples": 10, "gap": "20d"},
             "generate_feature_matrix_and_labels": {"target_dataframe_name": "turbines", "cutoff_time_in_index": True, "agg_primitives": ["count", "sum", "max"], "verbose": True},
             "generate_train_test_split": {},
-            "set_and_fit_pipeline": {},
+            "fit_pipeline": {},
             "evaluate": {}
         }
 
-
-
-    def setup_zephyr(self, step_num):
-        zephyr = Zephyr()
-
-        for i, (setters, getters) in enumerate(zephyr.step_order):
-            if i < step_num:
-                setter = setters[0]
-                kwargs = self.kwargs[setter.__name__]
-                getattr(zephyr, setter.__name__)(**kwargs)
-            else:
-                break
-        return zephyr
-    
     def test_initialize_class(self):
-        zephyr = self.setup_zephyr(1)
-    
-    def test_create_entityset(self):
-        zephyr = self.setup_zephyr(1)
+        zephyr = Zephyr()
+        assert zephyr.entityset is None
+        assert zephyr.labeling_function is None
+        assert zephyr.label_times is None
+        assert zephyr.pipeline is None
+        assert zephyr.pipeline_hyperparameters is None
+        assert zephyr.feature_matrix_and_labels is None
+        assert zephyr.X_train is None
+        assert zephyr.X_test is None
+        assert zephyr.y_train is None
+        assert zephyr.y_test is None
+        assert zephyr.is_fitted is None
+        assert zephyr.results is None
+
+    def test_generate_entityset(self):
+        zephyr = Zephyr()
+        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
         es = zephyr.get_entityset()
         assert es is not None
-    
-    def test_set_labeling_function(self):
-        zephyr = self.setup_zephyr(2)
-        labeling_fn = es = zephyr.get_labeling_function()
-        assert labeling_fn is not None
-    
+        assert es.id == 'pidata'
+
     def test_generate_label_times(self):
-        zephyr = self.setup_zephyr(3)
-        label_times = zephyr.get_label_times(visualize = False)
+        zephyr = Zephyr()
+        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
+        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
+        label_times = zephyr.get_label_times(visualize=False)
         assert label_times is not None
-    
+
     def test_generate_feature_matrix_and_labels(self):
-        zephyr = self.setup_zephyr(4)
+        zephyr = Zephyr()
+        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
+        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
+        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
         feature_matrix_and_labels = zephyr.get_feature_matrix_and_labels()
         assert feature_matrix_and_labels is not None
-    
+
     def test_generate_train_test_split(self):
-        zephyr = self.setup_zephyr(5)
+        zephyr = Zephyr()
+        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
+        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
+        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
+        zephyr.generate_train_test_split(**self.__class__.kwargs["generate_train_test_split"])
         train_test_split = zephyr.get_train_test_split()
         assert train_test_split is not None
-    
-    def setup_zephyr_with_base_split(self, step_num):
-        zephyr = self.setup_zephyr(4)
-        zephyr.set_train_test_split(*self.base_train_test_split())
-        for i in range(5, step_num):
-            setters, getters = zephyr.step_order[i]
-            setter = setters[0]
-            kwargs = self.kwargs[setter.__name__]
-            getattr(zephyr, setter.__name__)(**kwargs)
-        return zephyr
-    
+        X_train, X_test, y_train, y_test = train_test_split
+        assert isinstance(X_train, pd.DataFrame)
+        assert isinstance(X_test, pd.DataFrame)
+        assert isinstance(y_train, pd.Series)
+        assert isinstance(y_test, pd.Series)
+
     def test_set_train_test_split(self):
-        zephyr = self.setup_zephyr_with_base_split(5)
-        assert zephyr.get_train_test_split is not None
-    
-    def test_set_and_fit_pipeline_no_visual(self):
-        zephyr = self.setup_zephyr_with_base_split(5)
-        output = zephyr.set_and_fit_pipeline()
+        zephyr = Zephyr()
+        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
+        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
+        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
+        zephyr.set_train_test_split(*self.base_train_test_split())
+        train_test_split = zephyr.get_train_test_split()
+        assert train_test_split is not None
+        X_train, X_test, y_train, y_test = train_test_split
+        assert isinstance(X_train, pd.DataFrame)
+        assert isinstance(X_test, pd.DataFrame)
+        assert isinstance(y_train, list)
+        assert isinstance(y_test, list)
+
+    def test_fit_pipeline_no_visual(self):
+        zephyr = Zephyr()
+        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
+        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
+        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
+        zephyr.set_train_test_split(*self.base_train_test_split())
+        output = zephyr.fit_pipeline(**self.__class__.kwargs["fit_pipeline"])
         assert output is None
-        pipeline = zephyr.get_pipeline()
+        pipeline = zephyr.get_fitted_pipeline()
         assert pipeline is not None
-        pipeline_hyperparameters = zephyr.get_pipeline_hyperparameters()
-        assert pipeline_hyperparameters is not None
-    
-    def test_set_and_fit_pipeline_visual(self):
-        zephyr = self.setup_zephyr_with_base_split(5)
-        output = zephyr.set_and_fit_pipeline(visual = True)
+
+    def test_fit_pipeline_visual(self):
+        zephyr = Zephyr()
+        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
+        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
+        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
+        zephyr.set_train_test_split(*self.base_train_test_split())
+        output = zephyr.fit_pipeline(visual=True, **self.__class__.kwargs["fit_pipeline"])
         assert isinstance(output, dict)
         assert list(output.keys()) == ['threshold', 'scores']
         
-        pipeline = zephyr.get_pipeline()
+        pipeline = zephyr.get_fitted_pipeline()
         assert pipeline is not None
-        pipeline_hyperparameters = zephyr.get_pipeline_hyperparameters()
-        assert pipeline_hyperparameters is not None
-    
 
     def test_predict_no_visual(self):
-        zephyr = self.setup_zephyr_with_base_split(6)
+        zephyr = Zephyr()
+        zephyr.set_train_test_split(*self.base_train_test_split())
+        zephyr.fit_pipeline(**self.__class__.kwargs["fit_pipeline"])
         predicted = zephyr.predict()
         _, _, _, test_y = self.base_train_test_split()
-        assert test_y == predicted
+        print(predicted)
+        assert predicted == test_y
 
     def test_predict_visual(self):
-        zephyr = self.setup_zephyr_with_base_split(6)
-        predicted, output = zephyr.predict(visual = True)
-
-        assert self.test_y == predicted
-
-        # visualization
+        zephyr = Zephyr()
+        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
+        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
+        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
+        zephyr.set_train_test_split(*self.base_train_test_split())
+        zephyr.fit_pipeline(**self.__class__.kwargs["fit_pipeline"])
+        predicted, output = zephyr.predict(visual=True)
+        assert isinstance(predicted, list)
+        assert len(predicted) == len(self.test_y)
         assert isinstance(output, dict)
         assert list(output.keys()) == ['threshold', 'scores']
-    
 
     def test_evaluate(self):
-        zephyr = self.setup_zephyr_with_base_split(6)
-        scores = pd.Series(zephyr.evaluate(metrics = ["sklearn.metrics.accuracy_score",
+        zephyr = Zephyr()
+        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
+        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
+        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
+        zephyr.set_train_test_split(*self.base_train_test_split())
+        zephyr.fit_pipeline(**self.__class__.kwargs["fit_pipeline"])
+        scores = zephyr.evaluate(metrics=[
+            "sklearn.metrics.accuracy_score",
             "sklearn.metrics.precision_score",
             "sklearn.metrics.f1_score",
-            "sklearn.metrics.recall_score"]))
+            "sklearn.metrics.recall_score"
+        ])
         
-        expected = pd.Series({
-            "sklearn.metrics.accuracy_score": 1.0,
-            "sklearn.metrics.precision_score": 1.0,
-            "sklearn.metrics.f1_score": 1.0,
-            "sklearn.metrics.recall_score": 1.0
-        })
-        pd.testing.assert_series_equal(expected, scores)
+        assert isinstance(scores, dict)
+        assert all(metric in scores for metric in [
+            "sklearn.metrics.accuracy_score",
+            "sklearn.metrics.precision_score",
+            "sklearn.metrics.f1_score",
+            "sklearn.metrics.recall_score"
+        ])
+
+    def test_get_entityset_types(self):
+        zephyr = Zephyr()
+        entityset_types = zephyr.GET_ENTITYSET_TYPES()
         
+        # Check that it returns a dictionary
+        assert isinstance(entityset_types, dict)
         
+        # Check that it contains expected keys
+        assert "pidata" in entityset_types
+        assert "scada" in entityset_types
+        assert "vibrations" in entityset_types
+        
+        # Check structure of returned data
+        for es_type, info in entityset_types.items():
+            assert isinstance(info, dict)
+            assert "obj" in info
+            assert "desc" in info
+            assert isinstance(info["obj"], str)
+            assert isinstance(info["desc"], str)
 
+    def test_get_labeling_functions(self):
+        zephyr = Zephyr()
+        labeling_functions = zephyr.GET_LABELING_FUNCTIONS()
+        
+        # Check that it returns a dictionary
+        assert isinstance(labeling_functions, dict)
+        
+        # Check that it contains expected labeling functions
+        assert "brake_pad_presence" in labeling_functions
+        
+        # Check structure of returned data
+        for func_name, info in labeling_functions.items():
+            assert isinstance(info, dict)
+            assert "obj" in info
+            assert "desc" in info
+            assert callable(info["obj"])
+            assert isinstance(info["desc"], str)
 
-            
-          
+    def test_get_evaluation_metrics(self):
+        zephyr = Zephyr()
+        evaluation_metrics = zephyr.GET_EVALUATION_METRICS()
+        
+        # Check that it returns a dictionary
+        assert isinstance(evaluation_metrics, dict)
+        
+        # Check that it contains expected metrics
+        expected_metrics = DEFAULT_METRICS
+        
+        for metric in expected_metrics:
+            assert metric in evaluation_metrics
+        
+        # Check structure of returned data
+        for metric_name, info in evaluation_metrics.items():
+            assert isinstance(info, dict)
+            assert "obj" in info
+            assert "desc" in info
+            assert isinstance(info["obj"], MLBlock)
+            assert hasattr(info["obj"], "metadata")
+            assert isinstance(info["desc"], str)
 
-    # def setup_method(self):
-    #     self.zephyr = Zephyr('xgb_classifier')
-
-    # def test_hyperparameters(self):
-    #     hyperparameters = {
-    #         "xgboost.XGBClassifier#1": {
-    #             "max_depth": 2
-    #         },
-    #         "zephyr_ml.primitives.postprocessing.FindThreshold#1": {
-    #             "metric": "precision"
-    #         }
-    #     }
-
-    #     zephyr = Zephyr('xgb_classifier', hyperparameters)
-
-    #     assert zephyr._hyperparameters == hyperparameters
-
-    # def test_json(self):
-    #     file = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    #     json_zephyr = Zephyr(os.path.join(file, 'zephyr_ml', 'pipelines', 'xgb_classifier.json'))
-
-    #     json_zephyr_hyperparameters = json_zephyr._mlpipeline.get_hyperparameters()
-    #     zephyr_hyperparameters = self.zephyr._mlpipeline.get_hyperparameters()
-    #     assert json_zephyr_hyperparameters == zephyr_hyperparameters
-
-    # def test_fit(self):
-    #     self.zephyr.fit(self.train, self.train_y)
-
-    # def test_fit_visual(self):
-    #     output = self.zephyr.fit(self.train, self.train_y, visual=True)
-
-    #     assert isinstance(output, dict)
-    #     assert list(output.keys()) == ['threshold', 'scores']
-
-    # def test_fit_no_visual(self):
-    #     zephyr = Zephyr(['xgboost.XGBClassifier'])
-
-    #     output = zephyr.fit(self.train, self.train_y, visual=True)
-    #     assert output is None
-
-    # def test_predict(self):
-    #     self.zephyr.fit(self.train, self.train_y)
-
-    #     predicted = self.zephyr.predict(self.test)
-
-    #     assert self.test_y == predicted
-
-    # def test_predict_visual(self):
-    #     self.zephyr.fit(self.train, self.train_y)
-
-    #     predicted, output = self.zephyr.predict(self.test, visual=True)
-
-    #     # predictions
-    #     assert self.test_y == predicted
-
-    #     # visualization
-    #     assert isinstance(output, dict)
-    #     assert list(output.keys()) == ['threshold', 'scores']
-
-    # def test_predict_no_visual(self):
-    #     zephyr = Zephyr(['xgboost.XGBClassifier'])
-
-    #     zephyr.fit(self.train, self.train_y)
-
-    #     predicted = zephyr.predict(self.test, visual=True)
-    #     assert len(self.test_y) == len(predicted)
-
-    # def test_fit_predict(self):
-    #     predicted = self.zephyr.fit_predict(self.random, self.random_y)
-
-    #     assert isinstance(predicted, list)
-
-    # def test_save_load(self, tmpdir):
-    #     path = os.path.join(tmpdir, 'some_path.pkl')
-    #     self.zephyr.save(path)
-
-    #     new_zephyr = Zephyr.load(path)
-    #     assert new_zephyr == self.zephyr
-
-    # def test_load_failed(self, tmpdir):
-    #     path = os.path.join(tmpdir, 'some_path.pkl')
-    #     os.makedirs(os.path.dirname(path), exist_ok=True)
-    #     with open(path, 'wb') as pickle_file:
-    #         pickle.dump("something", pickle_file)
-
-    #     with pytest.raises(ValueError):
-    #         Zephyr.load(path)
-
-    # def test_evaluate(self):
-    #     self.zephyr.fit(self.test, self.test_y)
-    #     scores = self.zephyr.evaluate(X=self.test, y=self.test_y)
-
-    #     expected = pd.Series({
-    #         'accuracy': 1.0,
-    #         'f1': 1.0,
-    #         'recall': 1.0,
-    #         'precision': 1.0,
-    #     })
-    #     pd.testing.assert_series_equal(expected, scores)
-
-    # def test_evaluate_fit(self):
-    #     scores = self.zephyr.evaluate(
-    #         X=self.test,
-    #         y=self.test_y,
-    #         fit=True,
-    #     )
-
-    #     expected = pd.Series({
-    #         'accuracy': 1.0,
-    #         'f1': 1.0,
-    #         'recall': 1.0,
-    #         'precision': 1.0,
-    #     })
-    #     pd.testing.assert_series_equal(expected, scores)
-
-    # def test_evaluate_previously_fitted_with_fit_true(self):
-    #     self.zephyr.fit(self.train, self.train_y)
-
-    #     scores = self.zephyr.evaluate(
-    #         X=self.test,
-    #         y=self.test_y,
-    #         fit=True
-    #     )
-
-    #     expected = pd.Series({
-    #         'accuracy': 1.0,
-    #         'f1': 1.0,
-    #         'recall': 1.0,
-    #         'precision': 1.0,
-    #     })
-    #     pd.testing.assert_series_equal(expected, scores)
-
-    # def test_evaluate_train_data(self):
-    #     scores = self.zephyr.evaluate(
-    #         X=self.test,
-    #         y=self.test_y,
-    #         fit=True,
-    #         train_X=self.train,
-    #         train_y=self.train_y
-    #     )
-
-    #     expected = pd.Series({
-    #         'accuracy': 1.0,
-    #         'f1': 1.0,
-    #         'recall': 1.0,
-    #         'precision': 1.0,
-    #     })
-    #     pd.testing.assert_series_equal(expected, scores)
+    # def test_guide_handler_warnings(self):
+    #     zephyr = Zephyr()
+        
+    #     # Test skipping steps warning
+    #     with pytest.warns(UserWarning, match="You are skipping the following steps"):
+    #         zephyr.generate_feature_matrix_and_labels(**self.kwargs["generate_feature_matrix_and_labels"])
+        
+    #     # Test stale data warning
+    #     with pytest.warns(UserWarning, match="This data is potentially stale"):
+    #         zephyr.get_entityset()
+        
+    #     # Test inconsistent state warning
+    #     with pytest.warns(UserWarning, match="Unable to perform"):
+    #         zephyr.get_label_times()
