@@ -249,8 +249,15 @@ def guide(method):
 
 
 class Zephyr:
+    """Zephyr Class.
+
+    The Zephyr Class supports all the steps of the predictive engineering workflow
+    for wind farm operations data. It manages user state and handles entityset creation, labeling,
+    feature engineering, model training and evaluation.
+    """
 
     def __init__(self):
+        """Initialize a new Zephyr instance."""
         self._entityset = None
 
         self._label_times = None
@@ -288,9 +295,11 @@ class Zephyr:
         self.guide_handler = GuideHandler(step_order, set_methods)
 
     def GET_ENTITYSET_TYPES(self):
-        """
-        Returns the supported entityset types (PI/SCADA/Vibrations)
-        and the required dataframes and their columns
+        """Get the supported entityset types and their required dataframes/columns.
+
+        Returns:
+            dict: A dictionary mapping entityset types (PI/SCADA/Vibrations) to their
+                descriptions and value.
         """
         info_map = {}
         for es_type, val_fn in VALIDATE_DATA_FUNCTIONS.items():
@@ -300,9 +309,21 @@ class Zephyr:
         return info_map
 
     def GET_LABELING_FUNCTIONS(self):
+        """Get the available predefined labeling functions.
+
+        Returns:
+            dict: A dictionary mapping labeling function names to their
+            descriptions and implementations.
+        """
         return get_labeling_functions()
 
     def GET_EVALUATION_METRICS(self):
+        """Get the available evaluation metrics.
+
+        Returns:
+            dict: A dictionary mapping metric names to their descriptions
+             and MLBlock instances.
+        """
         info_map = {}
         for metric in DEFAULT_METRICS:
             primitive = self._get_ml_primitive(metric)
@@ -323,18 +344,26 @@ class Zephyr:
             signal_window_size=None,
             signal_replace_dataframe=False,
             **sigpro_kwargs):
-        """
-        Generate an entityset
+        """Generate an entityset from input dataframes with optional signal processing.
 
         Args:
-        dfs ( dict ): Dictionary mapping entity names to the pandas
-        dataframe for that that entity
-        es_type (str): type of signal data , either SCADA or PI
-        custom_kwargs_mapping ( dict ): Updated keyword arguments to be used
-        during entityset creation
+            dfs (dict): Dictionary mapping entity names to pandas DataFrames.
+            es_type (str): Type of signal data, either 'SCADA' or 'PI'.
+            custom_kwargs_mapping (dict, optional): Custom keyword arguments
+                for entityset creation.
+            signal_dataframe_name (str, optional): Name of dataframe containing
+                signal data to process.
+            signal_column (str, optional): Name of column containing signal values to process.
+            signal_transformations (list[dict], optional): List of transformation
+                primitives to apply.
+            signal_aggregations (list[dict], optional): List of aggregation primitives to apply.
+            signal_window_size (str, optional): Size of window for signal binning (e.g. '1h').
+            signal_replace_dataframe (bool, optional): Whether to replace
+                original signal dataframe.
+            **sigpro_kwargs: Additional keyword arguments for signal processing.
+
         Returns:
-        featuretools.EntitySet that contains the data passed in and
-        their relationships
+            featuretools.EntitySet: EntitySet containing the processed data and relationships.
         """
         entityset = _create_entityset(dfs, es_type, custom_kwargs_mapping)
 
@@ -358,12 +387,19 @@ class Zephyr:
         return self._entityset
 
     @guide
-    def set_entityset(
-            self,
-            entityset=None,
-            es_type=None,
-            entityset_path=None,
-            custom_kwargs_mapping=None):
+    def set_entityset(self, entityset=None, es_type=None, entityset_path=None,
+                      custom_kwargs_mapping=None):
+        """Set the entityset for this Zephyr instance.
+
+        Args:
+            entityset (featuretools.EntitySet, optional): An existing entityset to use.
+            es_type (str, optional): The type of entityset (pi/scada/vibrations).
+            entityset_path (str, optional): Path to a saved entityset to load.
+            custom_kwargs_mapping (dict, optional): Custom keyword arguments for validation.
+
+        Raises:
+            ValueError: If no entityset is provided through any of the parameters.
+        """
         if entityset_path is not None:
             entityset = ft.read_entityset(entityset_path)
 
@@ -382,6 +418,14 @@ class Zephyr:
 
     @guide
     def get_entityset(self):
+        """Get the current entityset.
+
+        Returns:
+            featuretools.EntitySet: The current entityset.
+
+        Raises:
+            ValueError: If no entityset has been set.
+        """
         if self._entityset is None:
             raise ValueError(
                 "No entityset has been created or set in this instance.")
@@ -390,8 +434,48 @@ class Zephyr:
 
     @guide
     def generate_label_times(
-        self, labeling_fn, num_samples=-1, subset=None, column_map={}, verbose=False, **kwargs
+        self, labeling_fn, num_samples=-1, subset=None, column_map={}, verbose=False, thresh=None,
+        window_size=None, minimum_data=None, maximum_data=None, gap=None, drop_empty=True, **kwargs
     ):
+        """Generate label times using a labeling function.
+
+        This method applies a labeling function to the entityset to generate labels at specific
+        timestamps. The labeling function can be either a predefined one (specified by name) or
+        a custom callable.
+
+        Args:
+            labeling_fn (callable or str): Either a custom labeling function or the
+                name of a predefined function (e.g. 'brake_pad_presence').
+                Predefined functions like brake_pad_presence analyze specific patterns
+                in the data (e.g. brake pad mentions in stoppage comments) and
+                return a tuple containing:
+                1) A label generation function that processes data slices
+                2) A denormalized dataframe containing the source data
+                3) Metadata about the labeling process (e.g. target entity, time index)
+            num_samples (int, optional): Number of samples to generate. -1 for all. Defaults to -1.
+            subset (int or float, optional): Number or fraction of samples to randomly select.
+            column_map (dict, optional): Mapping of column names for the labeling function.
+            verbose (bool, optional): Whether to display progress. Defaults to False.
+            thresh (float, optional): Threshold for label binarization. If None, tries to
+                use threshold value from labeling function metadata, if any.
+            window_size (str, optional): Size of the window for label generation (e.g. '1h').
+                If None, tries to use window size value from labeling function metadata, if any.
+            minimum_data (str, optional): Minimum data required before cutoff time.
+            maximum_data (str, optional): Maximum data required after cutoff time.
+            gap (str, optional): Minimum gap between consecutive labels.
+            drop_empty (bool, optional): Whether to drop windows with no events. Defaults to True.
+            **kwargs: Additional arguments passed to the label generation function.
+
+        Returns:
+            tuple: (composeml.LabelTimes, dict) The generated label times and metadata.
+                Label times contain the generated labels at specific timestamps.
+                Metadata contains information about the labeling process.
+
+        Raises:
+            ValueError: If labeling_fn is a string but not a recognized predefined function.
+            AssertionError: If entityset has not been generated or set or labeling_fn is
+                not a string and not callable.
+        """
         assert self._entityset is not None, "entityset has not been set"
 
         if isinstance(labeling_fn, str):  # get predefined labeling function
@@ -415,8 +499,10 @@ class Zephyr:
 
         target_entity_index = meta.get("target_entity_index")
         time_index = meta.get("time_index")
-        thresh = kwargs.get("thresh") or meta.get("thresh")
-        window_size = kwargs.get("window_size") or meta.get("window_size")
+        thresh = meta.get("thresh") if thresh is None else thresh
+        window_size = meta.get(
+            "window_size") if window_size is None else window_size
+
         label_maker = cp.LabelMaker(
             labeling_function=labeling_function,
             target_dataframe_name=target_entity_index,
@@ -431,7 +517,8 @@ class Zephyr:
             if kwargs.get(k) is not None
         }
         label_times = label_maker.search(
-            data.sort_values(time_index), num_samples, verbose=verbose, **kwargs
+            data.sort_values(time_index), num_samples, minimum_data=minimum_data,
+            maximum_data=maximum_data, gap=gap, drop_empty=drop_empty, verbose=verbose, **kwargs
         )
         if thresh is not None:
             label_times = label_times.threshold(thresh)
@@ -444,13 +531,28 @@ class Zephyr:
 
     @guide
     def set_label_times(self, label_times, label_col_name, meta=None):
+        """Set the label times for this Zephyr instance.
+
+        Args:
+            label_times (composeml.LabelTimes): Label times.
+            label_col_name (str): Name of the label column.
+            meta (dict, optional): Additional metadata about the labels.
+        """
         assert (isinstance(label_times, cp.LabelTimes))
         self._label_times = label_times
         self._label_col_name = label_col_name
         self._label_times_meta = meta
 
     @guide
-    def get_label_times(self, visualize=True):
+    def get_label_times(self, visualize=False):
+        """Get the current label times.
+
+        Args:
+            visualize (bool, optional): Whether to display a distribution plot. Defaults to False.
+
+        Returns:
+            tuple: (composeml.LabelTimes, dict) The label times and metadata.
+        """
         if visualize:
             cp.label_times.plots.LabelPlots(self._label_times).distribution()
         return self._label_times, self._label_times_meta
@@ -485,12 +587,10 @@ class Zephyr:
             return_types=None,
             progress_callback=None,
             include_cutoff_time=True,
-
             add_interesting_values=False,
             max_interesting_values=5,
             interesting_dataframe_name=None,
             interesting_values=None,
-
             signal_dataframe_name=None,
             signal_column=None,
             signal_transformations=None,
@@ -498,7 +598,56 @@ class Zephyr:
             signal_window_size=None,
             signal_replace_dataframe=False,
             **sigpro_kwargs):
+        """Generate a feature matrix using automated feature engineering.
+        Note that this method creates a deepcopy
+        of the generated or set entityset within the Zephyr instance
+        before performing any signal processing or feature generation.
 
+        Args:
+            target_dataframe_name (str, optional): Name of target entity for feature engineering.
+            instance_ids (list, optional): List of specific instances to generate features for.
+            agg_primitives (list, optional): Aggregation primitives to apply.
+            trans_primitives (list, optional): Transform primitives to apply.
+            groupby_trans_primitives (list, optional): Groupby transform primitives to apply.
+            allowed_paths (list, optional): Allowed entity paths for feature generation.
+            max_depth (int, optional): Maximum allowed depth of entity relationships.
+                Defaults to 2.
+            ignore_dataframes (list, optional): Dataframes to ignore during feature generation.
+            ignore_columns (dict, optional): Columns to ignore per dataframe.
+            primitive_options (dict, optional): Options for specific primitives.
+            seed_features (list, optional): Seed features to begin with.
+            drop_contains (list, optional): Drop features containing these substrings.
+            drop_exact (list, optional): Drop features exactly matching these names.
+            where_primitives (list, optional): Primitives to use in where clauses.
+            max_features (int, optional): Maximum number of features to return. -1 for all.
+            cutoff_time_in_index (bool, optional): Include cutoff time in the index.
+            save_progress (str, optional): Path to save progress.
+            features_only (bool, optional): Return only features without calculating values.
+            training_window (str, optional): Data window to use for training.
+            approximate (str, optional): Approximation method to use.
+            chunk_size (int, optional): Size of chunks for parallel processing.
+            n_jobs (int, optional): Number of parallel jobs. Defaults to 1.
+            dask_kwargs (dict, optional): Arguments for dask computation.
+            verbose (bool, optional): Whether to display progress. Defaults to False.
+            return_types (list, optional): Types of features to return.
+            progress_callback (callable, optional): Callback for progress updates.
+            include_cutoff_time (bool, optional): Include cutoff time features. Defaults to True.
+            add_interesting_values (bool, optional): Add interesting values. Defaults to False.
+            max_interesting_values (int, optional): Maximum interesting values per column.
+            interesting_dataframe_name (str, optional): Dataframe for interesting values.
+            interesting_values (dict, optional): Pre-defined interesting values.
+            signal_dataframe_name (str, optional): Name of dataframe containing signal data.
+            signal_column (str, optional): Name of column containing signal values.
+            signal_transformations (list, optional): Signal transformations to apply.
+            signal_aggregations (list, optional): Signal aggregations to apply.
+            signal_window_size (str, optional): Window size for signal processing.
+            signal_replace_dataframe (bool, optional): Replace original signal dataframe.
+            **sigpro_kwargs: Additional arguments for signal processing.
+
+        Returns:
+            tuple: (pd.DataFrame, list, featuretools.EntitySet)
+                Feature matrix, feature definitions, and the processed entityset.
+        """
         entityset_copy = copy.deepcopy(self._entityset)
         # perform signal processing
         if signal_dataframe_name is not None and signal_column is not None:
@@ -552,12 +701,27 @@ class Zephyr:
 
     @guide
     def get_feature_matrix(self):
+        """Get the current feature matrix.
+
+        Returns:
+            tuple: (pd.DataFrame, str, list) The feature matrix, label column name,
+                and feature definitions.
+        """
         return self._feature_matrix, self._label_col_name, self._features
 
     @guide
     def set_feature_matrix(self, feature_matrix, labels=None, label_col_name="label"):
+        """Set the feature matrix for this Zephyr instance.
+
+        Args:
+            feature_matrix (pd.DataFrame): The feature matrix to use.
+            labels (array-like, optional): Labels to add to the feature matrix.
+            label_col_name (str, optional): Name of the label column. Defaults to "label".
+        """
         assert isinstance(feature_matrix, pd.DataFrame) and (
-            labels is not None or label_col_name in feature_matrix.columns)
+            labels is not None or
+            label_col_name in feature_matrix.columns
+        )
         if labels is not None:
             feature_matrix[label_col_name] = labels
         self._feature_matrix = self._clean_feature_matrix(
@@ -574,6 +738,20 @@ class Zephyr:
         shuffle=True,
         stratify=False,
     ):
+        """Generate a train-test split of the feature matrix.
+
+        Args:
+            test_size (float or int, optional): Proportion or absolute size of test set.
+            train_size (float or int, optional): Proportion or absolute size of training set.
+            random_state (int, optional): Random seed for reproducibility.
+            shuffle (bool, optional): Whether to shuffle before splitting. Defaults to True.
+            stratify (bool or list, optional): Whether to maintain label distribution.
+                If True, uses labels for stratification. If list, uses those columns.
+                Defaults to False.
+
+        Returns:
+            tuple: (X_train, X_test, y_train, y_test) The split feature matrices and labels.
+        """
         feature_matrix = self._feature_matrix.copy()
         labels = feature_matrix.pop(self._label_col_name)
 
@@ -602,6 +780,14 @@ class Zephyr:
 
     @guide
     def set_train_test_split(self, X_train, X_test, y_train, y_test):
+        """Set the train-test split for this Zephyr instance.
+
+        Args:
+            X_train (pd.DataFrame): Training features.
+            X_test (pd.DataFrame): Testing features.
+            y_train (array-like): Training labels.
+            y_test (array-like): Testing labels.
+        """
         self._X_train = X_train
         self._X_test = X_test
         self._y_train = y_train
@@ -609,6 +795,11 @@ class Zephyr:
 
     @guide
     def get_train_test_split(self):
+        """Get the current train-test split.
+
+        Returns:
+            tuple or None: (X_train, X_test, y_train, y_test) if split exists, None otherwise.
+        """
         if (self._X_train is None or self._X_test is None or
                 self._y_train is None or self._y_test is None):
             return None
@@ -616,13 +807,34 @@ class Zephyr:
 
     @guide
     def set_fitted_pipeline(self, pipeline):
+        """Set a fitted pipeline for this Zephyr instance.
+
+        Args:
+            pipeline (MLPipeline): The fitted pipeline to use.
+        """
         self._pipeline = pipeline
 
     @guide
     def fit_pipeline(
             self, pipeline="xgb_classifier", pipeline_hyperparameters=None,
             X=None, y=None, visual=False, **kwargs):
-        # kwargs indicate the parameters of the current pipeline
+        """Fit a machine learning pipeline.
+
+        Args:
+            pipeline (str or dict or MLPipeline, optional): Pipeline to use. Can be:
+                - Name of a registered pipeline (default: "xgb_classifier")
+                - Path to a JSON pipeline specification
+                - Dictionary with pipeline specification
+                - MLPipeline instance
+            pipeline_hyperparameters (dict, optional): Hyperparameters for the pipeline.
+            X (pd.DataFrame, optional): Training features. If None, uses stored training set.
+            y (array-like, optional): Training labels. If None, uses stored training labels.
+            visual (bool, optional): Whether to return visualization data. Defaults to False.
+            **kwargs: Additional arguments passed to the pipeline's fit method.
+
+        Returns:
+            dict or None: If visual=True, returns visualization data dictionary.
+        """
         self._pipeline = self._get_mlpipeline(
             pipeline, pipeline_hyperparameters)
 
@@ -643,10 +855,25 @@ class Zephyr:
 
     @guide
     def get_fitted_pipeline(self):
+        """Get the current fitted pipeline.
+
+        Returns:
+            MLPipeline: The current fitted pipeline.
+        """
         return self._pipeline
 
     @guide
     def predict(self, X=None, visual=False, **kwargs):
+        """Make predictions using the fitted pipeline.
+
+        Args:
+            X (pd.DataFrame, optional): Features to predict on. If None, uses test set.
+            visual (bool, optional): Whether to return visualization data. Defaults to False.
+            **kwargs: Additional arguments passed to the pipeline's predict method.
+
+        Returns:
+            array-like or tuple: Predictions, and if visual=True, also returns visualization data.
+        """
         if X is None:
             X = self._X_test
         if visual:
@@ -663,14 +890,22 @@ class Zephyr:
 
     @guide
     def evaluate(
-            self,
-            X=None,
-            y=None,
-            metrics=None,
-            global_args=None,
-            local_args=None,
-            global_mapping=None,
-            local_mapping=None):
+            self, X=None, y=None, metrics=None, global_args=None,
+            local_args=None, global_mapping=None, local_mapping=None):
+        """Evaluate the fitted pipeline's performance.
+
+        Args:
+            X (pd.DataFrame, optional): Features to evaluate on. If None, uses test set.
+            y (array-like, optional): True labels. If None, uses test labels.
+            metrics (list, optional): Metrics to compute. If None, uses DEFAULT_METRICS.
+            global_args (dict, optional): Arguments passed to all metrics.
+            local_args (dict, optional): Arguments passed to specific metrics.
+            global_mapping (dict, optional): Mapping applied to all metric inputs.
+            local_mapping (dict, optional): Mapping applied to specific metric inputs.
+
+        Returns:
+            dict: A dictionary mapping metric names to their computed values.
+        """
         if X is None:
             X = self._X_test
         if y is None:
