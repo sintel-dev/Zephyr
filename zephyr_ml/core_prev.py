@@ -155,7 +155,7 @@ class Zephyr:
 
         if visual and visual_names:
             prediction = outputs[0]
-            return prediction, dict(zip(visual_names, outputs[-len(visual_names) :]))
+            return prediction, dict(zip(visual_names, outputs[-len(visual_names):]))
 
         return outputs
 

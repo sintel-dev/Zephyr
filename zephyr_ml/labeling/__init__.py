@@ -41,8 +41,6 @@ def get_labeling_functions_map():
     return functions
 
 
-
-
 def get_helper_functions():
     functions = {}
     for function in UTIL_FUNCTIONS:

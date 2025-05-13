@@ -54,9 +54,9 @@ development_requires = [
     'Sphinx>=3,<3.3',
     'sphinx_rtd_theme>=0.2.4,<0.5',
     'autodocsumm>=0.1.10',
-    'mistune>=0.7,<2',
+    'mistune>=0.7,<3.1',
     'Jinja2>=2,<3.1',
-    
+
     # fails on Sphinx < v3.4
     'alabaster<=0.7.12',
     # fails on Sphins < v5.0
@@ -65,7 +65,7 @@ development_requires = [
     'sphinxcontrib-htmlhelp<2.0.5',
     'sphinxcontrib-serializinghtml<1.1.10',
     'sphinxcontrib-qthelp<1.0.7',
-    
+
     # style check
     'flake8>=3.7.7,<4',
     'isort>=4.3.4,<5',

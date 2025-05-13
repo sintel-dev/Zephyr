@@ -2,7 +2,7 @@ from sigpro import SigPro
 
 
 def process_signals(es, signal_dataframe_name, signal_column, transformations, aggregations,
-                    window_size = None, replace_dataframe=False, **kwargs):
+                    window_size=None, replace_dataframe=False, **kwargs):
     '''
     Process signals using SigPro.
 
@@ -54,6 +54,7 @@ def process_signals(es, signal_dataframe_name, signal_column, transformations, a
             signal_dataframe_name,
             time_index=time_index,
             index='_index')
+        
 
     else:
         df_name = '{}_processed'.format(signal_df.ww.name)

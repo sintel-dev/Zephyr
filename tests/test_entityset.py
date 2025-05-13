@@ -118,11 +118,15 @@ def scada_dfs(base_dfs):
     })
     return {**base_dfs, 'scada': scada_df}
 
+
 def create_pidata_entityset(pidata_dfs):
-    return _create_entityset(pidata_dfs, es_type = "pidata")
+    return _create_entityset(pidata_dfs, es_type="pidata")
+
 
 def create_scada_entityset(scada_dfs):
-    return _create_entityset(scada_dfs, es_type = "scada")
+    return _create_entityset(scada_dfs, es_type="scada")
+
+
 def test_create_pidata_missing_entities(pidata_dfs):
     error_msg = 'Missing dataframes for entities notifications.'
 

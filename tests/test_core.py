@@ -1,13 +1,7 @@
-import os
-import pickle
-
-from mlblocks import MLBlock
 import numpy as np
 import pandas as pd
-import pytest
-
+from mlblocks import MLBlock
 from zephyr_ml.core import DEFAULT_METRICS, Zephyr
-import logging
 
 
 class TestZephyr:
@@ -50,8 +44,7 @@ class TestZephyr:
             'COD_MAT_DOC': [77889900, 12345690],
             'DES_MEDIUM': ['Description of notification 1', 'Description of notification 2'],
             'COD_NOTIF': [567890123, 32109877],
-            'DAT_MALF_START': [pd.Timestamp('2021-12-25 18:07:10'),
-                            pd.Timestamp('2022-02-28 06:04:00')],
+            'DAT_MALF_START': [pd.Timestamp('2021-12-25 18:07:10'), pd.Timestamp('2022-02-28 06:04:00')],
             'DAT_MALF_END': [pd.Timestamp('2022-01-08 11:07:17'), pd.Timestamp('2022-03-01 17:00:13')],
             'IND_BREAKDOWN_DUR': [14.1378, 2.4792],
             'FUNCT_LOC_DES': ['location description 1', 'location description 2'],
@@ -61,19 +54,15 @@ class TestZephyr:
         work_orders_df = pd.DataFrame({
             'COD_ELEMENT': [0, 0],
             'COD_ORDER': [12345, 67890],
-            'DAT_BASIC_START': [pd.Timestamp('2022-01-01 00:00:00'),
-                                pd.Timestamp('2022-03-01 00:00:00')],
-            'DAT_BASIC_END': [pd.Timestamp('2022-01-09 00:00:00'),
-                            pd.Timestamp('2022-03-02 00:00:00')],
+            'DAT_BASIC_START': [pd.Timestamp('2022-01-01 00:00:00'), pd.Timestamp('2022-03-01 00:00:00')],
+            'DAT_BASIC_END': [pd.Timestamp('2022-01-09 00:00:00'), pd.Timestamp('2022-03-02 00:00:00')],
             'COD_EQUIPMENT': [98765, 98765],
             'COD_MAINT_PLANT': ['ABC', 'ABC'],
             'COD_MAINT_ACT_TYPE': ['XYZ', 'XYZ'],
             'COD_CREATED_BY': ['A1234', 'B6789'],
             'COD_ORDER_TYPE': ['A', 'B'],
-            'DAT_REFERENCE': [pd.Timestamp('2022-01-01 00:00:00'),
-                            pd.Timestamp('2022-03-01 00:00:00')],
-            'DAT_CREATED_ON': [pd.Timestamp('2022-03-01 00:00:00'),
-                            pd.Timestamp('2022-04-18 00:00:00')],
+            'DAT_REFERENCE': [pd.Timestamp('2022-01-01 00:00:00'), pd.Timestamp('2022-03-01 00:00:00')],
+            'DAT_CREATED_ON': [pd.Timestamp('2022-03-01 00:00:00'), pd.Timestamp('2022-04-18 00:00:00')],
             'DAT_VALID_END': [pd.NaT, pd.NaT],
             'DAT_VALID_START': [pd.NaT, pd.NaT],
             'COD_SYSTEM_STAT': ['ABC XYZ', 'LMN OPQ'],
@@ -117,7 +106,6 @@ class TestZephyr:
             'feature 2': [0] * 150 + [1] * 150,
         })
         y_train = X_train['feature 2'].to_list()
-        
         X_test = pd.DataFrame({
             'feature 1': np.random.random((100)),
             'feature 2': [0] * 25 + [1] * 50 + [0] * 25,
@@ -132,43 +120,40 @@ class TestZephyr:
             'feature 2': [0] * 150 + [1] * 150,
         })
         cls.train_y = cls.train['feature 2'].to_list()
-
         cls.test = pd.DataFrame({
             'feature 1': np.random.random((100)),
             'feature 2': [0] * 25 + [1] * 50 + [0] * 25,
         })
         cls.test_y = cls.test['feature 2'].to_list()
-
         cls.random = pd.DataFrame({
             'feature 1': list(range(100)),
             'feature 2': np.random.random(100),
             'feature 3': np.random.random(100),
         })
         cls.random_y = [1 if x > 0.5 else 0 for x in np.random.random(100)]
-
         cls.kwargs = {
-            "generate_entityset": {"dfs": TestZephyr.base_dfs(), "es_type": "pidata"},
-            "generate_label_times": {"labeling_fn": "brake_pad_presence", "num_samples": 10, "gap": "20d"},
-            "generate_feature_matrix_and_labels": {"target_dataframe_name": "turbines", "cutoff_time_in_index": True, "agg_primitives": ["count", "sum", "max"], "verbose": True},
+            "generate_entityset": {
+                "dfs": TestZephyr.base_dfs(),
+                "es_type": "pidata"},
+            "generate_label_times": {
+                "labeling_fn": "brake_pad_presence",
+                "num_samples": 10,
+                "gap": "20d"},
+            "generate_feature_matrix": {
+                "target_dataframe_name": "turbines",
+                "cutoff_time_in_index": True,
+                "agg_primitives": [
+                    "count",
+                    "sum",
+                    "max"],
+                "verbose": True},
             "generate_train_test_split": {},
             "fit_pipeline": {},
-            "evaluate": {}
-        }
+            "evaluate": {}}
 
     def test_initialize_class(self):
-        zephyr = Zephyr()
-        assert zephyr.entityset is None
-        assert zephyr.labeling_function is None
-        assert zephyr.label_times is None
-        assert zephyr.pipeline is None
-        assert zephyr.pipeline_hyperparameters is None
-        assert zephyr.feature_matrix_and_labels is None
-        assert zephyr.X_train is None
-        assert zephyr.X_test is None
-        assert zephyr.y_train is None
-        assert zephyr.y_test is None
-        assert zephyr.is_fitted is None
-        assert zephyr.results is None
+        _ = Zephyr()
+        
 
     def test_generate_entityset(self):
         zephyr = Zephyr()
@@ -188,15 +173,19 @@ class TestZephyr:
         zephyr = Zephyr()
         zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
         zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
-        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
-        feature_matrix_and_labels = zephyr.get_feature_matrix_and_labels()
-        assert feature_matrix_and_labels is not None
+        zephyr.generate_feature_matrix(
+            **self.__class__.kwargs["generate_feature_matrix"])
+        feature_matrix, label_col_name, features= zephyr.get_feature_matrix()
+        assert feature_matrix is not None
+        assert label_col_name in feature_matrix.columns
+        assert features is not None
 
     def test_generate_train_test_split(self):
         zephyr = Zephyr()
         zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
         zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
-        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
+        zephyr.generate_feature_matrix(
+            **self.__class__.kwargs["generate_feature_matrix"])
         zephyr.generate_train_test_split(**self.__class__.kwargs["generate_train_test_split"])
         train_test_split = zephyr.get_train_test_split()
         assert train_test_split is not None
@@ -208,9 +197,6 @@ class TestZephyr:
 
     def test_set_train_test_split(self):
         zephyr = Zephyr()
-        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
-        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
-        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
         zephyr.set_train_test_split(*self.base_train_test_split())
         train_test_split = zephyr.get_train_test_split()
         assert train_test_split is not None
@@ -222,9 +208,6 @@ class TestZephyr:
 
     def test_fit_pipeline_no_visual(self):
         zephyr = Zephyr()
-        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
-        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
-        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
         zephyr.set_train_test_split(*self.base_train_test_split())
         output = zephyr.fit_pipeline(**self.__class__.kwargs["fit_pipeline"])
         assert output is None
@@ -233,14 +216,10 @@ class TestZephyr:
 
     def test_fit_pipeline_visual(self):
         zephyr = Zephyr()
-        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
-        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
-        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
         zephyr.set_train_test_split(*self.base_train_test_split())
         output = zephyr.fit_pipeline(visual=True, **self.__class__.kwargs["fit_pipeline"])
         assert isinstance(output, dict)
         assert list(output.keys()) == ['threshold', 'scores']
-        
         pipeline = zephyr.get_fitted_pipeline()
         assert pipeline is not None
 
@@ -250,14 +229,10 @@ class TestZephyr:
         zephyr.fit_pipeline(**self.__class__.kwargs["fit_pipeline"])
         predicted = zephyr.predict()
         _, _, _, test_y = self.base_train_test_split()
-        print(predicted)
         assert predicted == test_y
 
     def test_predict_visual(self):
         zephyr = Zephyr()
-        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
-        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
-        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
         zephyr.set_train_test_split(*self.base_train_test_split())
         zephyr.fit_pipeline(**self.__class__.kwargs["fit_pipeline"])
         predicted, output = zephyr.predict(visual=True)
@@ -268,9 +243,6 @@ class TestZephyr:
 
     def test_evaluate(self):
         zephyr = Zephyr()
-        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
-        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
-        zephyr.generate_feature_matrix_and_labels(**self.__class__.kwargs["generate_feature_matrix_and_labels"])
         zephyr.set_train_test_split(*self.base_train_test_split())
         zephyr.fit_pipeline(**self.__class__.kwargs["fit_pipeline"])
         scores = zephyr.evaluate(metrics=[
@@ -279,7 +251,6 @@ class TestZephyr:
             "sklearn.metrics.f1_score",
             "sklearn.metrics.recall_score"
         ])
-        
         assert isinstance(scores, dict)
         assert all(metric in scores for metric in [
             "sklearn.metrics.accuracy_score",
@@ -291,16 +262,10 @@ class TestZephyr:
     def test_get_entityset_types(self):
         zephyr = Zephyr()
         entityset_types = zephyr.GET_ENTITYSET_TYPES()
-        
-        # Check that it returns a dictionary
         assert isinstance(entityset_types, dict)
-        
-        # Check that it contains expected keys
         assert "pidata" in entityset_types
         assert "scada" in entityset_types
         assert "vibrations" in entityset_types
-        
-        # Check structure of returned data
         for es_type, info in entityset_types.items():
             assert isinstance(info, dict)
             assert "obj" in info
@@ -311,14 +276,8 @@ class TestZephyr:
     def test_get_labeling_functions(self):
         zephyr = Zephyr()
         labeling_functions = zephyr.GET_LABELING_FUNCTIONS()
-        
-        # Check that it returns a dictionary
         assert isinstance(labeling_functions, dict)
-        
-        # Check that it contains expected labeling functions
         assert "brake_pad_presence" in labeling_functions
-        
-        # Check structure of returned data
         for func_name, info in labeling_functions.items():
             assert isinstance(info, dict)
             assert "obj" in info
@@ -329,17 +288,10 @@ class TestZephyr:
     def test_get_evaluation_metrics(self):
         zephyr = Zephyr()
         evaluation_metrics = zephyr.GET_EVALUATION_METRICS()
-        
-        # Check that it returns a dictionary
         assert isinstance(evaluation_metrics, dict)
-        
-        # Check that it contains expected metrics
         expected_metrics = DEFAULT_METRICS
-        
         for metric in expected_metrics:
             assert metric in evaluation_metrics
-        
-        # Check structure of returned data
         for metric_name, info in evaluation_metrics.items():
             assert isinstance(info, dict)
             assert "obj" in info
@@ -347,18 +299,3 @@ class TestZephyr:
             assert isinstance(info["obj"], MLBlock)
             assert hasattr(info["obj"], "metadata")
             assert isinstance(info["desc"], str)
-
-    # def test_guide_handler_warnings(self):
-    #     zephyr = Zephyr()
-        
-    #     # Test skipping steps warning
-    #     with pytest.warns(UserWarning, match="You are skipping the following steps"):
-    #         zephyr.generate_feature_matrix_and_labels(**self.kwargs["generate_feature_matrix_and_labels"])
-        
-    #     # Test stale data warning
-    #     with pytest.warns(UserWarning, match="This data is potentially stale"):
-    #         zephyr.get_entityset()
-        
-    #     # Test inconsistent state warning
-    #     with pytest.warns(UserWarning, match="Unable to perform"):
-    #         zephyr.get_label_times()

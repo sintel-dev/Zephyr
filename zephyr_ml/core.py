@@ -1,11 +1,6 @@
 from zephyr_ml.entityset import _create_entityset, VALIDATE_DATA_FUNCTIONS
-from zephyr_ml.labeling import get_labeling_functions, get_labeling_functions_map, LABELING_FUNCTIONS
-# from zephyr_ml.entityset import _create_entityset, VALIDATE_DATA_FUNCTIONS
-from zephyr_ml.labeling import (
-    get_labeling_functions,
-    get_labeling_functions_map,
-    LABELING_FUNCTIONS,
-)
+from zephyr_ml.labeling import get_labeling_functions
+from zephyr_ml.labeling import get_labeling_functions_map
 from zephyr_ml.feature_engineering import process_signals
 import composeml as cp
 from inspect import getfullargspec
@@ -15,12 +10,11 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 import os
 import json
-from mlblocks import MLPipeline, MLBlock, get_primitives_paths, add_primitives_path
-from itertools import chain
-import logging
-import matplotlib.pyplot as plt
+from mlblocks import MLPipeline, MLBlock
 from functools import wraps
-import inspect
+import logging
+from functools import wraps
+import copy
 DEFAULT_METRICS = [
     "sklearn.metrics.accuracy_score",
     "sklearn.metrics.precision_score",
@@ -43,7 +37,7 @@ class GuideHandler:
 
         self.producer_to_step_map = {}
         self.getter_to_step_map = {}
-        
+
         self.terms = []
         self.skipped = []
         for idx, (producers, getters) in enumerate(self.producers_and_getters):
@@ -64,13 +58,13 @@ class GuideHandler:
                 option_strs.append(opt.__name__)
             step_strs.append(f"{step}. {' or '.join(option_strs)}")
         return "\n".join(step_strs)
-    
+
     def get_get_steps_in_between(self, cur_step, next_step):
         step_strs = []
         for step in range(cur_step + 1, next_step):
             step_strs.append(f"{step} {self.producers_and_getters[step][1][0]}")
         return step_strs
-    
+
     def get_last_up_to_date(self, next_step):
         latest_up_to_date = 0
         for step in range(next_step):
@@ -78,53 +72,51 @@ class GuideHandler:
                 latest_up_to_date = step
         return latest_up_to_date
 
-    
     def join_steps(self, step_strs):
         return "\n".join(step_strs)
-    
+
     def get_steps_in_between(self, cur_step, next_step):
         step_strs = []
-        for step in range(cur_step+1, next_step):
+        for step in range(cur_step + 1, next_step):
             option_strs = []
             for opt in self.producers_and_getters[step][0]:
                 option_strs.append(opt.__name__)
             step_strs.append(f"{step}. {' or '.join(option_strs)}")
         return step_strs
-    
+
     def perform_producer_step(self, zephyr, method, *method_args, **method_kwargs):
         step_num = self.producer_to_step_map[method.__name__]
         res = method(zephyr, *method_args, **method_kwargs)
         self.current_step = step_num
         self.terms[step_num] = self.cur_term
         return res
-    
-    
+
     def try_log_skipping_steps_warning(self, name, next_step):
         steps_skipped = self.get_steps_in_between(self.current_step, next_step)
         if len(steps_skipped) > 0:
             for step in range(self.current_step + 1, next_step):
                 self.skipped[step] = True
             necc_steps = self.join_steps(steps_skipped)
-            LOGGER.warning(f"Performing {name}. You are skipping the following steps:\n{necc_steps}")
-           
+            LOGGER.warning(
+                f"Performing {name}. You are skipping the following steps:\n{necc_steps}")
 
     def try_log_using_stale_warning(self, name, next_step):
         latest_up_to_date = self.get_last_up_to_date(next_step)
-        steps_needed = self.get_steps_in_between(latest_up_to_date-1, next_step)
-        if len(steps_needed) >0:
+        steps_needed = self.get_steps_in_between(latest_up_to_date - 1, next_step)
+        if len(steps_needed) > 0:
             necc_steps = self.join_steps(steps_needed)
             LOGGER.warning(f"Performing {name}. You are in a stale state and \
                         using potentially stale data to perform this step. \
                         Re-run the following steps to return to a present state:\n: \
                         {steps_needed}")
-        
 
     def try_log_making_stale_warning(self, name, next_step):
         next_next_step = next_step + 1
         prod_steps = f"{next_next_step}. {' or '.join(self.producers_and_getters[next_next_step][0])}"
         # add later set methods
-        get_steps = self.join_steps(self.get_get_steps_in_between(next_step, self.current_step + 1))
-
+        get_steps = self.join_steps(
+            self.get_get_steps_in_between(
+                next_step, self.current_step + 1))
 
         LOGGER.warning(f"Performing {name}. You are beginning a new iteration. Any data returned \
                        by the following get methods will be considered stale:\n{get_steps}. To continue with this iteration, please perform:\n{prod_steps}")
@@ -132,25 +124,25 @@ class GuideHandler:
     # stale must be before b/c user must have regressed with progress that contains skips
     # return set method, and next possible up to date key method
     def try_log_inconsistent_warning(self, name, next_step):
-        set_method_str= f"{self.producers_and_getters[next_step][0][1].__name__}"
+        set_method_str = f"{self.producers_and_getters[next_step][0][1].__name__}"
         latest_up_to_date = self.get_last_up_to_date(next_step)
         LOGGER.warning(f"Unable to perform {name} because some steps have been skipped. \
                        You can call the corresponding set method: {set_method_str} or re run steps \
                         starting at or before {latest_up_to_date}")
-        
+
     def log_get_inconsistent_warning(self, name, next_step):
         prod_steps = f"{next_step}. {' or '.join(self.producers_and_getters[next_step][0])}"
         latest_up_to_date = self.get_last_up_to_date(next_step)
-        LOGGER.warning(f"Unable to perform {name} because {prod_steps} has not been run yet. Run steps starting at or before {latest_up_to_date} ")
-        
+        LOGGER.warning(
+            f"Unable to perform {name} because {prod_steps} has not been run yet. Run steps starting at or before {latest_up_to_date} ")
 
     def log_get_stale_warning(self, name, next_step):
         latest_up_to_date = self.get_last_up_to_date(next_step)
         LOGGER.warning(f"Performing {name}. This data is potentially stale. \
                        Re-run steps starting at or before {latest_up_to_date} to ensure data is up to date.")
-        
 
-    # tries to perform step if possible -> warns that data might be stale    
+    # tries to perform step if possible -> warns that data might be stale
+
     def try_perform_forward_producer_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
         next_step = self.producer_to_step_map[name]
@@ -159,51 +151,48 @@ class GuideHandler:
         # next_step == 0, set method (already warned), or previous step is up to term
         res = self.perform_producer_step(zephyr, method, *method_args, **method_kwargs)
         return res
-    
 
     # next_step == 0, set method, or previous step is up to term
+
     def try_perform_backward_producer_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
         next_step = self.producer_to_step_map[name]
         self.try_log_making_stale_warning(next_step)
-        self.cur_term +=1
+        self.cur_term += 1
         for i in range(0, next_step):
             if self.terms[i] != -1:
                 self.terms[i] = self.cur_term
         res = self.perform_producer_step(zephyr, method, *method_args, **method_kwargs)
         return res
 
-
     def try_perform_producer_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
         next_step = self.producer_to_step_map[name]
         if next_step >= self.current_step:
-            res = self.try_perform_forward_producer_step(zephyr, method, *method_args, **method_kwargs)
+            res = self.try_perform_forward_producer_step(
+                zephyr, method, *method_args, **method_kwargs)
             return res
         else:
-            res = self.try_perform_backward_producer_step(zephyr, method, *method_args, **method_kwargs)
+            res = self.try_perform_backward_producer_step(
+                zephyr, method, *method_args, **method_kwargs)
             return res
 
-
     # dont update current step or terms
-    def try_perform_stale_or_inconsistent_producer_step(self, zephyr, method, *method_args, **method_kwargs):
+
+    def try_perform_stale_or_inconsistent_producer_step(
+            self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
         next_step = self.producer_to_step_map[name]
-        if self.terms[next_step-1] == -1: #inconsistent
+        if self.terms[next_step - 1] == -1:  # inconsistent
             self.try_log_inconsistent_warning(name, next_step)
         else:
             # need to include a case where performing using stale data that was skipped in current iteration
             # overwrite current iteration's ?
             # no not possible b/c if there is a current iteration after this step, it must have updated this step's iteration
-            # 
+            #
             self.try_log_using_stale_warning(name, next_step)
             res = self.perform_producer_step(zephyr, method, *method_args, **method_kwargs)
             return res
-
-
-    
-
-    
 
     def try_perform_getter_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
@@ -220,38 +209,23 @@ class GuideHandler:
             res = method(zephyr, *method_args, **method_kwargs)
             return res
 
-
-
-
-    
-
     def guide_step(self, zephyr, method, *method_args, **method_kwargs):
         method_name = method.__name__
         if method_name in self.producer_to_step_map:
-            #up-todate
+            # up-todate
             next_step = self.producer_to_step_map[method_name]
-            if method_name in self.set_methods or next_step == 0 or self.terms[next_step-1] == self.cur_term:
+            if method_name in self.set_methods or next_step == 0 or self.terms[next_step - 1] == self.cur_term:
                 res = self.try_perform_producer_step(zephyr, method, *method_args, **method_kwargs)
                 return res
-            else: #stale or inconsistent
-                res = self.try_perform_stale_or_inconsistent_producer_step(zephyr, method, *method_args, **method_kwargs)
+            else:  # stale or inconsistent
+                res = self.try_perform_stale_or_inconsistent_producer_step(
+                    zephyr, method, *method_args, **method_kwargs)
                 return res
         elif method_name in self.getter_to_step_map:
             res = self.try_perform_getter_step(zephyr, method, *method_args, **method_kwargs)
             return res
         else:
             print(f"Method {method_name} does not need to be wrapped")
-
-
-
-
-
-
-        
-
-    
-
-
 
 
 def guide(method):
@@ -262,38 +236,45 @@ def guide(method):
 
     return guided_step
 
+
 class Zephyr:
 
     def __init__(self):
-        self.entityset = None
-        self.labeling_function = None
-        self.label_times = None
-        self.pipeline = None
-        self.pipeline_hyperparameters = None
-        self.feature_matrix_and_labels = None
-        self.X_train = None
-        self.X_test = None
-        self.y_train = None
-        self.y_test = None
-        self.is_fitted = None
-        self.results = None
+        self._entityset = None
 
+        self._label_times = None
+        self._label_times_meta = None
 
-        
+        self._label_col_name = "label"
+        self._feature_matrix = None
+
+        self._pipeline = None
+
+        self._X_train = None
+        self._X_test = None
+        self._y_train = None
+        self._y_test = None
+
         # tuple of 2 arrays: producers and attributes
         step_order = [
-            ([self.generate_entityset, self.set_entityset], [self.get_entityset]),
-            ([self.generate_label_times, self.set_label_times], [self.get_label_times]),
-            ([self.generate_feature_matrix_and_labels, self.set_feature_matrix_and_labels], [self.get_feature_matrix_and_labels]),
-            ([self.generate_train_test_split, self.set_train_test_split], [self.get_train_test_split]),
-            ([self.fit_pipeline, self.set_fitted_pipeline], [self.get_fitted_pipeline]),
-            ([self.predict, self.evaluate], [])
-        ]
-        set_methods = set([self.set_entityset.__name__, self.set_label_times.__name__, self.set_feature_matrix_and_labels.__name__, self.set_train_test_split.__name__, self.set_fitted_pipeline.__name__])
-        self.guide_handler = GuideHandler(step_order, set_methods) 
-    
-
-            
+            ([
+                self.generate_entityset, self.set_entityset], [
+                self.get_entityset]), ([
+                    self.generate_label_times, self.set_label_times], [
+                    self.get_label_times]), ([
+                        self.generate_feature_matrix, self.set_feature_matrix], [
+                            self.get_feature_matrix]), ([
+                                self.generate_train_test_split, self.set_train_test_split], [
+                                    self.get_train_test_split]), ([
+                                        self.fit_pipeline, self.set_fitted_pipeline], [
+                                            self.get_fitted_pipeline]), ([
+                                                self.predict, self.evaluate], [])]
+        set_methods = set([self.set_entityset.__name__,
+                           self.set_label_times.__name__,
+                           self.set_feature_matrix.__name__,
+                           self.set_train_test_split.__name__,
+                           self.set_fitted_pipeline.__name__])
+        self.guide_handler = GuideHandler(step_order, set_methods)
 
     def GET_ENTITYSET_TYPES(self):
         """
@@ -304,21 +285,30 @@ class Zephyr:
             info_map[es_type] = {"obj": es_type, "desc": " ".join((val_fn.__doc__.split()))}
 
         return info_map
-    
+
     def GET_LABELING_FUNCTIONS(self):
         return get_labeling_functions()
-    
+
     def GET_EVALUATION_METRICS(self):
         info_map = {}
         for metric in DEFAULT_METRICS:
             primitive = self._get_ml_primitive(metric)
-            info_map[metric] = {"obj": primitive, "desc": primitive.metadata["description"] }
+            info_map[metric] = {"obj": primitive, "desc": primitive.metadata["description"]}
         return info_map
 
     @guide
-    def generate_entityset(self, dfs, es_type, custom_kwargs_mapping=None, 
-                           signal_dataframe_name = None, signal_column = None, signal_transformations = None, 
-                           signal_aggregations = None, signal_window_size = None, signal_replace_dataframe = False, **sigpro_kwargs):
+    def generate_entityset(
+            self,
+            dfs,
+            es_type,
+            custom_kwargs_mapping=None,
+            signal_dataframe_name=None,
+            signal_column=None,
+            signal_transformations=None,
+            signal_aggregations=None,
+            signal_window_size=None,
+            signal_replace_dataframe=False,
+            **sigpro_kwargs):
         """
         Generate an entityset
 
@@ -334,73 +324,60 @@ class Zephyr:
         """
         entityset = _create_entityset(dfs, es_type, custom_kwargs_mapping)
 
-        #perform signal processing
-        if signal_dataframe_name is not None and signal_column is not None: 
+        # perform signal processing
+        if signal_dataframe_name is not None and signal_column is not None:
             if signal_transformations is None:
                 signal_transformations = []
             if signal_aggregations is None:
                 signal_aggregations = []
-            process_signals(entityset, signal_dataframe_name, signal_column, signal_transformations, 
-                            signal_aggregations, signal_window_size, signal_replace_dataframe, **sigpro_kwargs)
+            process_signals(
+                entityset,
+                signal_dataframe_name,
+                signal_column,
+                signal_transformations,
+                signal_aggregations,
+                signal_window_size,
+                signal_replace_dataframe,
+                **sigpro_kwargs)
 
-        self.entityset = entityset
-        return self.entityset
+        self._entityset = entityset
+        return self._entityset
 
     @guide
-    def set_entityset(self, entityset=None, es_type=None, entityset_path = None, custom_kwargs_mapping=None):
+    def set_entityset(
+            self,
+            entityset=None,
+            es_type=None,
+            entityset_path=None,
+            custom_kwargs_mapping=None):
         if entityset_path is not None:
             entityset = ft.read_entityset(entityset_path)
 
         if entityset is None:
-            raise ValueError("No entityset passed in. Please pass in an entityset object via the entityest parameter or an entityset path via the entityset_path parameter.")
-        
+            raise ValueError(
+                "No entityset passed in. Please pass in an entityset object via the entityest parameter or an entityset path via the entityset_path parameter.")
+
         dfs = entityset.dataframe_dict
 
         validate_func = VALIDATE_DATA_FUNCTIONS[es_type]
         validate_func(dfs, custom_kwargs_mapping)
 
-        self.entityset = entityset
+        self._entityset = entityset
 
     @guide
     def get_entityset(self):
-        if self.entityset is None:
+        if self._entityset is None:
             raise ValueError("No entityset has been created or set in this instance.")
 
-        return self.entityset
-    
+        return self._entityset
 
-    
-
-    # @guide
-    # def set_labeling_function(self, name=None, func=None):
-    #     if name is not None:
-    #         labeling_fn_map = get_labeling_functions_map()
-    #         if name in labeling_fn_map:
-    #             self.labeling_function = labeling_fn_map[name]
-    #             return
-    #         else:
-    #             raise ValueError(
-    #                 f"Unrecognized name argument:{name}. Call get_predefined_labeling_functions to view predefined labeling functions"
-    #             )
-    #     elif func is not None:
-    #         if callable(func):
-    #             self.labeling_function = func
-    #             return
-    #         else:
-    #             raise ValueError(f"Custom function is not callable")
-    #     raise ValueError("No labeling function given.")
-    
-    # @guide
-    # def get_labeling_function(self):
-    #     return self.labeling_function
-    
     @guide
     def generate_label_times(
         self, labeling_fn, num_samples=-1, subset=None, column_map={}, verbose=False, **kwargs
     ):
-        assert self.entityset is not None, "entityset has not been set"
-        
-        if isinstance(labeling_fn, str): # get predefined labeling function
+        assert self._entityset is not None, "entityset has not been set"
+
+        if isinstance(labeling_fn, str):  # get predefined labeling function
             labeling_fn_map = get_labeling_functions_map()
             if labeling_fn in labeling_fn_map:
                 labeling_fn = labeling_fn_map[labeling_fn]
@@ -409,11 +386,9 @@ class Zephyr:
                     f"Unrecognized name argument:{labeling_fn}. Call get_predefined_labeling_functions to view predefined labeling functions"
                 )
 
-
         assert callable(labeling_fn), "Labeling function is not callable"
-            
 
-        labeling_function, df, meta = labeling_fn(self.entityset, column_map)
+        labeling_function, df, meta = labeling_fn(self._entityset, column_map)
 
         data = df
         if isinstance(subset, float) or isinstance(subset, int):
@@ -442,69 +417,122 @@ class Zephyr:
         if thresh is not None:
             label_times = label_times.threshold(thresh)
 
-        self.label_times = label_times
+        self._label_times = label_times
+        self._label_col_name = "label"
+        self._label_times_meta = meta
 
         return label_times, meta
-    
-    @guide
-    def set_label_times(self, label_times):
-        assert(isinstance(label_times, cp.LabelTimes))
-        self.label_times = label_times
 
     @guide
-    def get_label_times(self, visualize = True):
+    def set_label_times(self, label_times, label_col_name, meta = None):
+        assert (isinstance(label_times, cp.LabelTimes))
+        self._label_times = label_times
+        self._label_col_name = label_col_name
+        self._label_times_meta = meta
+
+    @guide
+    def get_label_times(self, visualize=True):
         if visualize:
-            cp.label_times.plots.LabelPlots(self.label_times).distribution()
-        return self.label_times
+            cp.label_times.plots.LabelPlots(self._label_times).distribution()
+        return self._label_times, self._label_times_meta
 
     @guide
-    def generate_feature_matrix_and_labels(self, target_dataframe_name = None, instance_ids = None, 
-                                           agg_primitives = None, trans_primitives = None, groupby_trans_primitives = None, 
-                                           allowed_paths = None, max_depth = 2, ignore_dataframes = None, ignore_columns=None, 
-                                           primitive_options=None, seed_features=None, 
-                                           drop_contains=None, drop_exact=None, where_primitives=None, max_features=-1, 
-                                           cutoff_time_in_index=False, save_progress=None, features_only=False, training_window=None, 
-                                           approximate=None, chunk_size=None, n_jobs=1, dask_kwargs=None, verbose=False, return_types=None, 
-                                           progress_callback=None, include_cutoff_time=True,       
-                                            
-                                            signal_dataframe_name = None, signal_column = None, signal_transformations = None, 
-                                            signal_aggregations = None, signal_window_size = None, signal_replace_dataframe = False, **sigpro_kwargs):
+    def generate_feature_matrix(
+            self,
+            target_dataframe_name=None,
+            instance_ids=None,
+            agg_primitives=None,
+            trans_primitives=None,
+            groupby_trans_primitives=None,
+            allowed_paths=None,
+            max_depth=2,
+            ignore_dataframes=None,
+            ignore_columns=None,
+            primitive_options=None,
+            seed_features=None,
+            drop_contains=None,
+            drop_exact=None,
+            where_primitives=None,
+            max_features=-1,
+            cutoff_time_in_index=False,
+            save_progress=None,
+            features_only=False,
+            training_window=None,
+            approximate=None,
+            chunk_size=None,
+            n_jobs=1,
+            dask_kwargs=None,
+            verbose=False,
+            return_types=None,
+            progress_callback=None,
+            include_cutoff_time=True,
+
+            add_interesting_values = False,
+            max_interesting_values = 5,
+            interesting_dataframe_name = None,
+            interesting_values = None,
+
+            signal_dataframe_name=None,
+            signal_column=None,
+            signal_transformations=None,
+            signal_aggregations=None,
+            signal_window_size=None,
+            signal_replace_dataframe=False,
+            **sigpro_kwargs):
         
+
+        entityset_copy = copy.deepcopy(self._entityset)
         # perform signal processing
-        if signal_dataframe_name is not None and signal_column is not None: 
+        if signal_dataframe_name is not None and signal_column is not None:
+            # first make copy of entityset
             if signal_transformations is None:
                 signal_transformations = []
             if signal_aggregations is None:
                 signal_aggregations = []
-                process_signals(self.entityset, signal_dataframe_name, signal_column, signal_transformations, 
-                            signal_aggregations, signal_window_size, signal_replace_dataframe, **sigpro_kwargs)
+            process_signals(
+                entityset_copy,
+                signal_dataframe_name,
+                signal_column,
+                signal_transformations,
+                signal_aggregations,
+                signal_window_size,
+                signal_replace_dataframe,
+                **sigpro_kwargs)
         
+        # add interesting values for where primitives
+        if add_interesting_values:
+            entityset_copy.add_interesting_values(max_values = max_interesting_values, verbose = verbose,dataframe_name = interesting_dataframe_name, values = interesting_values)
+
+
         feature_matrix, features = ft.dfs(
-            entityset=self.entityset, cutoff_time=self.label_times,
-            target_dataframe_name = target_dataframe_name, instance_ids =instance_ids, 
-            agg_primitives = agg_primitives, trans_primitives = trans_primitives, groupby_trans_primitives = groupby_trans_primitives, 
-            allowed_paths = allowed_paths, max_depth = max_depth, ignore_dataframes = ignore_dataframes, ignore_columns=ignore_columns, 
-            primitive_options=primitive_options, seed_features=seed_features, 
-            drop_contains=drop_contains, drop_exact=drop_exact, where_primitives=where_primitives, max_features=max_features, 
-            cutoff_time_in_index=cutoff_time_in_index, save_progress=save_progress, features_only=features_only, training_window=training_window, 
-            approximate=approximate, chunk_size=chunk_size, n_jobs=n_jobs, dask_kwargs=dask_kwargs, verbose=verbose, return_types=return_types, 
-            progress_callback=progress_callback, include_cutoff_time=include_cutoff_time, 
+            entityset=entityset_copy, cutoff_time=self._label_times,
+            target_dataframe_name=target_dataframe_name, instance_ids=instance_ids,
+            agg_primitives=agg_primitives, trans_primitives=trans_primitives, groupby_trans_primitives=groupby_trans_primitives,
+            allowed_paths=allowed_paths, max_depth=max_depth, ignore_dataframes=ignore_dataframes, ignore_columns=ignore_columns,
+            primitive_options=primitive_options, seed_features=seed_features,
+            drop_contains=drop_contains, drop_exact=drop_exact, where_primitives=where_primitives, max_features=max_features,
+            cutoff_time_in_index=cutoff_time_in_index, save_progress=save_progress, features_only=features_only, training_window=training_window,
+            approximate=approximate, chunk_size=chunk_size, n_jobs=n_jobs, dask_kwargs=dask_kwargs, verbose=verbose, return_types=return_types,
+            progress_callback=progress_callback, include_cutoff_time=include_cutoff_time,
         )
-        self.feature_matrix_and_labels = self._clean_feature_matrix(feature_matrix)
-        self.features = features
-        return self.feature_matrix_and_labels, features
+        self._feature_matrix = self._clean_feature_matrix(feature_matrix, label_col_name=self._label_col_name)
+        self._features = features
+        
+        return self._feature_matrix, self._features, entityset_copy
 
     @guide
-    def get_feature_matrix_and_labels(self):
-        return self.feature_matrix_and_labels
-
+    def get_feature_matrix(self):
+        return self._feature_matrix, self._label_col_name, self._features
 
     @guide
-    def set_feature_matrix_and_labels(self, feature_matrix, label_col_name="label"):
-        assert label_col_name in feature_matrix.columns
-        self.feature_matrix_and_labels = self._clean_feature_matrix(
+    def set_feature_matrix(self, feature_matrix, labels = None,label_col_name="label"):
+        assert isinstance(feature_matrix, pd.DataFrame) and (labels is not None or label_col_name in feature_matrix.columns )
+        if labels is not None:
+            feature_matrix[label_col_name] = labels
+        self._feature_matrix = self._clean_feature_matrix(
             feature_matrix, label_col_name=label_col_name
         )
+        self._label_col_name = label_col_name
 
     @guide
     def generate_train_test_split(
@@ -515,14 +543,15 @@ class Zephyr:
         shuffle=True,
         stratify=False,
     ):
-        feature_matrix, labels = self.feature_matrix_and_labels
-        
+        feature_matrix = self._feature_matrix.copy()
+        labels = feature_matrix.pop(self._label_col_name)
+
         if not isinstance(stratify, list):
             if stratify:
                 stratify = labels
             else:
                 stratify = None
-        
+
         X_train, X_test, y_train, y_test = train_test_split(
             feature_matrix,
             labels,
@@ -532,91 +561,89 @@ class Zephyr:
             shuffle=shuffle,
             stratify=stratify,
         )
-        self.X_train = X_train
-        self.X_test = X_test
-        self.y_train = y_train
-        self.y_test = y_test
 
-        return
+        self._X_train = X_train
+        self._X_test = X_test
+        self._y_train = y_train
+        self._y_test = y_test
+
+        return X_train, X_test, y_train, y_test
 
     @guide
     def set_train_test_split(self, X_train, X_test, y_train, y_test):
-        self.X_train = X_train
-        self.X_test = X_test
-        self.y_train = y_train
-        self.y_test = y_test
+        self._X_train = X_train
+        self._X_test = X_test
+        self._y_train = y_train
+        self._y_test = y_test
 
     @guide
     def get_train_test_split(self):
-        if self.X_train is None or self.X_test is None or self.y_train is None or self.y_test is None:
+        if self._X_train is None or self._X_test is None or self._y_train is None or self._y_test is None:
             return None
-        return self.X_train, self.X_test, self.y_train, self.y_test
+        return self._X_train, self._X_test, self._y_train, self._y_test
 
-    
-    
     @guide
     def set_fitted_pipeline(self, pipeline):
-        self.pipeline = pipeline
-    
+        self._pipeline = pipeline
+
     @guide
     def fit_pipeline(
-        self, pipeline = "xgb_classifier", pipeline_hyperparameters=None, X=None, y=None, visual=False, **kwargs
+        self, pipeline="xgb_classifier", pipeline_hyperparameters=None, X=None, y=None, visual=False, **kwargs
     ):  # kwargs indicate the parameters of the current pipeline
-        self.pipeline = self._get_mlpipeline(pipeline, pipeline_hyperparameters)
+        self._pipeline = self._get_mlpipeline(pipeline, pipeline_hyperparameters)
 
         if X is None:
-            X = self.X_train
+            X = self._X_train
         if y is None:
-            y = self.y_train
-
+            y = self._y_train
 
         if visual:
             outputs_spec, visual_names = self._get_outputs_spec(False)
         else:
             outputs_spec = None
 
-        outputs = self.pipeline.fit(X, y, output_=outputs_spec, **kwargs)
+        outputs = self._pipeline.fit(X, y, output_=outputs_spec, **kwargs)
 
         if visual and outputs is not None:
             return dict(zip(visual_names, outputs))
-        
-    @guide
-    def get_fitted_pipeline(self):
-        return self.pipeline
 
     @guide
-    def get_pipeline_hyperparameters(self):
-        return self.pipeline_hyperparameters
+    def get_fitted_pipeline(self):
+        return self._pipeline
+
 
     @guide
     def predict(self, X=None, visual=False, **kwargs):
         if X is None:
-            X = self.X_test
+            X = self._X_test
         if visual:
             outputs_spec, visual_names = self._get_outputs_spec()
         else:
             outputs_spec = "default"
 
-
-        outputs = self.pipeline.predict(X, output_=outputs_spec, **kwargs)
-        print(outputs)
+        outputs = self._pipeline.predict(X, output_=outputs_spec, **kwargs)
         if visual and visual_names:
             prediction = outputs[0]
-            return prediction, dict(zip(visual_names, outputs[-len(visual_names) :]))
+            return prediction, dict(zip(visual_names, outputs[-len(visual_names):]))
 
         return outputs
-    
-    
-    
 
     @guide
-    def evaluate(self, X=None, y=None,metrics=None, global_args = None, local_args = None, global_mapping = None, local_mapping = None):
+    def evaluate(
+            self,
+            X=None,
+            y=None,
+            metrics=None,
+            global_args=None,
+            local_args=None,
+            global_mapping=None,
+            local_mapping=None):
         if X is None:
-            X = self.X_test
+            X = self._X_test
         if y is None:
-            y = self.y_test
+            y = self._y_test
 
-        final_context = self.pipeline.predict(X, output_=-1)
+        final_context = self._pipeline.predict(X, output_=-1)
 
         # remap items, if any
         if global_mapping is not None:
@@ -625,25 +652,23 @@ class Zephyr:
                     cur_item = final_context.pop(cur)
                     final_context[new] = cur_item
 
-    
         if metrics is None:
             metrics = DEFAULT_METRICS
 
         if global_args is None:
             global_args = {}
-        
+
         if local_args is None:
             local_args = {}
 
         if local_mapping is None:
             local_mapping = {}
 
-
         results = {}
         for metric in metrics:
             try:
                 metric_primitive = self._get_ml_primitive(metric)
-                
+
                 if metric in local_mapping:
                     metric_context = {}
                     metric_mapping = local_mapping[metric]
@@ -653,19 +678,19 @@ class Zephyr:
                 else:
                     metric_context = final_context
 
-    
                 if metric in local_args:
                     metric_args = local_args[metric]
                 else:
                     metric_args = {}
 
-                res = metric_primitive.produce(y_true = self.y_test, **metric_context, **metric_args)
+                res = metric_primitive.produce(y_true=self._y_test, **metric_context, **metric_args)
                 results[metric_primitive.name] = res
             except Exception as e:
-                LOGGER.error(f"Unable to run evaluation metric: {metric_primitive.name}", exc_info = e)
-        self.results = results
+                LOGGER.error(
+                    f"Unable to run evaluation metric: {metric_primitive.name}",
+                    exc_info=e)
+        self._results = results
         return results
-
 
     def _clean_feature_matrix(self, feature_matrix, label_col_name="label"):
         labels = feature_matrix.pop(label_col_name)
@@ -678,7 +703,9 @@ class Zephyr:
         string_cols = feature_matrix.select_dtypes(include="category").columns
         feature_matrix = pd.get_dummies(feature_matrix, columns=string_cols)
 
-        return feature_matrix, labels
+        feature_matrix[label_col_name] = labels
+
+        return feature_matrix
 
     def _get_mlpipeline(self, pipeline, hyperparameters=None):
         if isinstance(pipeline, str) and os.path.isfile(pipeline):
@@ -705,14 +732,12 @@ class Zephyr:
         outputs_spec = ["default"] if default else []
 
         try:
-            visual_names = self.pipeline.get_output_names("visual")
+            visual_names = self._pipeline.get_output_names("visual")
             outputs_spec.append("visual")
         except ValueError:
             visual_names = []
 
         return outputs_spec, visual_names
-
-
 
 
 if __name__ == "__main__":
@@ -866,12 +891,11 @@ if __name__ == "__main__":
     # )
 
     # obj.set_entityset(entityset_path = "/Users/raymondpan/zephyr/Zephyr-repo/brake_pad_es", es_type = 'scada')
-    
+
     # obj.set_labeling_function(name="brake_pad_presence")
 
     # obj.generate_label_times(labeling_fn="brake_pad_presence", num_samples=10, gap="20d")
     # # print(obj.get_label_times())
-
 
     # obj.generate_feature_matrix_and_labels(
     #     target_dataframe_name="turbines",
@@ -887,6 +911,5 @@ if __name__ == "__main__":
     #     path="/Users/raymondpan/zephyr/Zephyr-repo/zephyr_ml/primitives/jsons"
     # )
     # obj.set_and_fit_pipeline()
-
 
     # obj.evaluate()

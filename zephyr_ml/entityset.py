@@ -2,7 +2,7 @@ from itertools import chain
 
 import featuretools as ft
 
-from zephyr_ml.metadata import get_mapped_kwargs, get_es_types
+from zephyr_ml.metadata import get_mapped_kwargs
 
 
 # def _create_entityset(entities, es_type, es_kwargs):
@@ -109,7 +109,6 @@ def _validate_data(dfs, es_type, es_kwargs):
     if not isinstance(es_type, list):
         es_type = [es_type]
 
-
     entities = set(
         chain(
             [
@@ -209,7 +208,7 @@ def _validate_data(dfs, es_type, es_kwargs):
 
 def validate_scada_data(dfs, new_kwargs_mapping=None):
     """
-    SCADA data is signal data from the Original Equipment Manufacturer Supervisory Control 
+    SCADA data is signal data from the Original Equipment Manufacturer Supervisory Control
     And Data Acquisition (OEM-SCADA) system, a signal data source.
     """
     entity_kwargs = get_mapped_kwargs("scada", new_kwargs_mapping)
@@ -257,7 +256,7 @@ VALIDATE_DATA_FUNCTIONS = {
 
 
 def _create_entityset(entities, es_type, new_kwargs_mapping=None):
-    
+
     validate_func = VALIDATE_DATA_FUNCTIONS[es_type]
     es_kwargs = validate_func(entities, new_kwargs_mapping)
 
