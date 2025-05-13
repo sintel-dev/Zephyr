@@ -35,7 +35,8 @@ def gearbox_replace_presence(es, column_map={}):
     def label(ds, **kwargs):
         label_strings = ['Gearbox replace*', 'Gearbox exchange']
         comments_lower = ds[comments].fillna('').str.lower()
-        f = any(comments_lower.str.contains('|'.join(label_strings), case=False))
+        f = any(comments_lower.str.contains(
+            '|'.join(label_strings), case=False))
         return f
 
     meta = {

@@ -9,16 +9,9 @@ __version__ = '0.0.5.dev0'
 import os
 
 from zephyr_ml.core import Zephyr
-from zephyr_ml.entityset import (
-    # create_pidata_entityset,
-    # create_scada_entityset,
-    _create_entityset,
-    VALIDATE_DATA_FUNCTIONS,
-)
+from zephyr_ml.entityset import VALIDATE_DATA_FUNCTIONS, _create_entityset
 from zephyr_ml.labeling import DataLabeler
 
-MLBLOCKS_PRIMITIVES = os.path.join(os.path.dirname(__file__), "primitives", "jsons")
+MLBLOCKS_PRIMITIVES = os.path.join(
+    os.path.dirname(__file__), "primitives", "jsons")
 MLBLOCKS_PIPELINES = os.path.join(os.path.dirname(__file__), "pipelines")
-# import os, sys
-
-# sys.path.append(os.path.dirname(os.path.realpath(__file__)))

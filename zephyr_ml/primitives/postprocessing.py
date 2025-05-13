@@ -4,11 +4,11 @@ Postprocessing functions.
 
 import logging
 
+import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 import sklearn
 from sklearn import metrics
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 LOGGER = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ def confusion_matrix(
     )
     fig = plt.figure()
     ax = fig.add_axes(sns.heatmap(conf_matrix, annot=True, cmap="Blues"))
-   
+
     ax.set_title("Confusion Matrix\n")
     ax.set_xlabel("\nPredicted Values")
     ax.set_ylabel("Actual Values")
@@ -131,7 +131,7 @@ def roc_auc_score_and_curve(
 
     auc = metrics.roc_auc_score(y_true, y_proba)
     fig, ax = plt.subplots(1, 1)
-    
+
     ax.plot(fpr, tpr, "ro")
     ax.plot(fpr, tpr)
     ax.plot(ns_fpr, ns_tpr, linestyle="--", color="green")
@@ -139,6 +139,5 @@ def roc_auc_score_and_curve(
     ax.set_ylabel("True Positive Rate")
     ax.set_xlabel("False Positive Rate")
     ax.set_title("AUC: %.3f" % auc)
-        
 
     return auc, fig

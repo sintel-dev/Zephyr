@@ -1,20 +1,21 @@
-from zephyr_ml.entityset import _create_entityset, VALIDATE_DATA_FUNCTIONS
-from zephyr_ml.labeling import get_labeling_functions
-from zephyr_ml.labeling import get_labeling_functions_map
-from zephyr_ml.feature_engineering import process_signals
-import composeml as cp
+import copy
+import json
+import logging
+import os
+from functools import wraps
 from inspect import getfullargspec
+
+import composeml as cp
 import featuretools as ft
 import numpy as np
 import pandas as pd
+from mlblocks import MLBlock, MLPipeline
 from sklearn.model_selection import train_test_split
-import os
-import json
-from mlblocks import MLPipeline, MLBlock
-from functools import wraps
-import logging
-from functools import wraps
-import copy
+
+from zephyr_ml.entityset import VALIDATE_DATA_FUNCTIONS, _create_entityset
+from zephyr_ml.feature_engineering import process_signals
+from zephyr_ml.labeling import get_labeling_functions, get_labeling_functions_map
+
 DEFAULT_METRICS = [
     "sklearn.metrics.accuracy_score",
     "sklearn.metrics.precision_score",
@@ -62,7 +63,8 @@ class GuideHandler:
     def get_get_steps_in_between(self, cur_step, next_step):
         step_strs = []
         for step in range(cur_step + 1, next_step):
-            step_strs.append(f"{step} {self.producers_and_getters[step][1][0]}")
+            step_strs.append(
+                f"{step} {self.producers_and_getters[step][1][0]}")
         return step_strs
 
     def get_last_up_to_date(self, next_step):
@@ -102,9 +104,9 @@ class GuideHandler:
 
     def try_log_using_stale_warning(self, name, next_step):
         latest_up_to_date = self.get_last_up_to_date(next_step)
-        steps_needed = self.get_steps_in_between(latest_up_to_date - 1, next_step)
+        steps_needed = self.get_steps_in_between(
+            latest_up_to_date - 1, next_step)
         if len(steps_needed) > 0:
-            necc_steps = self.join_steps(steps_needed)
             LOGGER.warning(f"Performing {name}. You are in a stale state and \
                         using potentially stale data to perform this step. \
                         Re-run the following steps to return to a present state:\n: \
@@ -112,34 +114,41 @@ class GuideHandler:
 
     def try_log_making_stale_warning(self, name, next_step):
         next_next_step = next_step + 1
-        prod_steps = f"{next_next_step}. {' or '.join(self.producers_and_getters[next_next_step][0])}"
+        prod_steps = f"{next_next_step}. \
+            {' or '.join(self.producers_and_getters[next_next_step][0])}"
         # add later set methods
         get_steps = self.join_steps(
             self.get_get_steps_in_between(
                 next_step, self.current_step + 1))
 
-        LOGGER.warning(f"Performing {name}. You are beginning a new iteration. Any data returned \
-                       by the following get methods will be considered stale:\n{get_steps}. To continue with this iteration, please perform:\n{prod_steps}")
+        LOGGER.warning(f"Performing {name}. You are beginning a new iteration.\
+                        Any data returned by the following get methods will be \
+                       considered stale:\n{get_steps}. To continue with this \
+                        iteration, please perform:\n{prod_steps}")
 
     # stale must be before b/c user must have regressed with progress that contains skips
     # return set method, and next possible up to date key method
     def try_log_inconsistent_warning(self, name, next_step):
-        set_method_str = f"{self.producers_and_getters[next_step][0][1].__name__}"
+        set_method_str = self.producers_and_getters[next_step][0][1].__name__
         latest_up_to_date = self.get_last_up_to_date(next_step)
-        LOGGER.warning(f"Unable to perform {name} because some steps have been skipped. \
-                       You can call the corresponding set method: {set_method_str} or re run steps \
-                        starting at or before {latest_up_to_date}")
+        LOGGER.warning(f"Unable to perform {name} because some steps have been\
+                    skipped. You can call the corresponding set method: \
+                    {set_method_str} or re run steps starting at or before \
+                    {latest_up_to_date}")
 
     def log_get_inconsistent_warning(self, name, next_step):
-        prod_steps = f"{next_step}. {' or '.join(self.producers_and_getters[next_step][0])}"
+        prod_steps = f"{next_step}. \
+            {' or '.join(self.producers_and_getters[next_step][0])}"
         latest_up_to_date = self.get_last_up_to_date(next_step)
-        LOGGER.warning(
-            f"Unable to perform {name} because {prod_steps} has not been run yet. Run steps starting at or before {latest_up_to_date} ")
+        LOGGER.warning(f"Unable to perform {name} because {prod_steps} has not \
+                        been run yet. Run steps starting at or before \
+                        {latest_up_to_date} ")
 
     def log_get_stale_warning(self, name, next_step):
         latest_up_to_date = self.get_last_up_to_date(next_step)
         LOGGER.warning(f"Performing {name}. This data is potentially stale. \
-                       Re-run steps starting at or before {latest_up_to_date} to ensure data is up to date.")
+                        Re-run steps starting at or before \
+                        {latest_up_to_date} to ensure data is up to date.")
 
     # tries to perform step if possible -> warns that data might be stale
 
@@ -149,7 +158,8 @@ class GuideHandler:
         if name in self.set_methods:
             self.try_log_skipping_steps_warning(name, next_step)
         # next_step == 0, set method (already warned), or previous step is up to term
-        res = self.perform_producer_step(zephyr, method, *method_args, **method_kwargs)
+        res = self.perform_producer_step(
+            zephyr, method, *method_args, **method_kwargs)
         return res
 
     # next_step == 0, set method, or previous step is up to term
@@ -162,7 +172,8 @@ class GuideHandler:
         for i in range(0, next_step):
             if self.terms[i] != -1:
                 self.terms[i] = self.cur_term
-        res = self.perform_producer_step(zephyr, method, *method_args, **method_kwargs)
+        res = self.perform_producer_step(
+            zephyr, method, *method_args, **method_kwargs)
         return res
 
     def try_perform_producer_step(self, zephyr, method, *method_args, **method_kwargs):
@@ -186,12 +197,9 @@ class GuideHandler:
         if self.terms[next_step - 1] == -1:  # inconsistent
             self.try_log_inconsistent_warning(name, next_step)
         else:
-            # need to include a case where performing using stale data that was skipped in current iteration
-            # overwrite current iteration's ?
-            # no not possible b/c if there is a current iteration after this step, it must have updated this step's iteration
-            #
             self.try_log_using_stale_warning(name, next_step)
-            res = self.perform_producer_step(zephyr, method, *method_args, **method_kwargs)
+            res = self.perform_producer_step(
+                zephyr, method, *method_args, **method_kwargs)
             return res
 
     def try_perform_getter_step(self, zephyr, method, *method_args, **method_kwargs):
@@ -214,15 +222,18 @@ class GuideHandler:
         if method_name in self.producer_to_step_map:
             # up-todate
             next_step = self.producer_to_step_map[method_name]
-            if method_name in self.set_methods or next_step == 0 or self.terms[next_step - 1] == self.cur_term:
-                res = self.try_perform_producer_step(zephyr, method, *method_args, **method_kwargs)
+            if (method_name in self.set_methods or next_step == 0 or
+                    self.terms[next_step - 1] == self.cur_term):
+                res = self.try_perform_producer_step(
+                    zephyr, method, *method_args, **method_kwargs)
                 return res
             else:  # stale or inconsistent
                 res = self.try_perform_stale_or_inconsistent_producer_step(
                     zephyr, method, *method_args, **method_kwargs)
                 return res
         elif method_name in self.getter_to_step_map:
-            res = self.try_perform_getter_step(zephyr, method, *method_args, **method_kwargs)
+            res = self.try_perform_getter_step(
+                zephyr, method, *method_args, **method_kwargs)
             return res
         else:
             print(f"Method {method_name} does not need to be wrapped")
@@ -278,11 +289,13 @@ class Zephyr:
 
     def GET_ENTITYSET_TYPES(self):
         """
-        Returns the supported entityset types (PI/SCADA/Vibrations) and the required dataframes and their columns
+        Returns the supported entityset types (PI/SCADA/Vibrations)
+        and the required dataframes and their columns
         """
         info_map = {}
         for es_type, val_fn in VALIDATE_DATA_FUNCTIONS.items():
-            info_map[es_type] = {"obj": es_type, "desc": " ".join((val_fn.__doc__.split()))}
+            info_map[es_type] = {"obj": es_type,
+                                 "desc": " ".join((val_fn.__doc__.split()))}
 
         return info_map
 
@@ -293,7 +306,8 @@ class Zephyr:
         info_map = {}
         for metric in DEFAULT_METRICS:
             primitive = self._get_ml_primitive(metric)
-            info_map[metric] = {"obj": primitive, "desc": primitive.metadata["description"]}
+            info_map[metric] = {"obj": primitive,
+                                "desc": primitive.metadata["description"]}
         return info_map
 
     @guide
@@ -355,7 +369,9 @@ class Zephyr:
 
         if entityset is None:
             raise ValueError(
-                "No entityset passed in. Please pass in an entityset object via the entityest parameter or an entityset path via the entityset_path parameter.")
+                "No entityset passed in. Please pass in an entityset object\
+                via the entityset parameter or an entityset path via the \
+                entityset_path parameter.")
 
         dfs = entityset.dataframe_dict
 
@@ -367,7 +383,8 @@ class Zephyr:
     @guide
     def get_entityset(self):
         if self._entityset is None:
-            raise ValueError("No entityset has been created or set in this instance.")
+            raise ValueError(
+                "No entityset has been created or set in this instance.")
 
         return self._entityset
 
@@ -383,7 +400,9 @@ class Zephyr:
                 labeling_fn = labeling_fn_map[labeling_fn]
             else:
                 raise ValueError(
-                    f"Unrecognized name argument:{labeling_fn}. Call get_predefined_labeling_functions to view predefined labeling functions"
+                    f"Unrecognized name argument:{labeling_fn}. \
+                        Call get_predefined_labeling_functions to \
+                            view predefined labeling functions"
                 )
 
         assert callable(labeling_fn), "Labeling function is not callable"
@@ -424,7 +443,7 @@ class Zephyr:
         return label_times, meta
 
     @guide
-    def set_label_times(self, label_times, label_col_name, meta = None):
+    def set_label_times(self, label_times, label_col_name, meta=None):
         assert (isinstance(label_times, cp.LabelTimes))
         self._label_times = label_times
         self._label_col_name = label_col_name
@@ -467,10 +486,10 @@ class Zephyr:
             progress_callback=None,
             include_cutoff_time=True,
 
-            add_interesting_values = False,
-            max_interesting_values = 5,
-            interesting_dataframe_name = None,
-            interesting_values = None,
+            add_interesting_values=False,
+            max_interesting_values=5,
+            interesting_dataframe_name=None,
+            interesting_values=None,
 
             signal_dataframe_name=None,
             signal_column=None,
@@ -479,7 +498,6 @@ class Zephyr:
             signal_window_size=None,
             signal_replace_dataframe=False,
             **sigpro_kwargs):
-        
 
         entityset_copy = copy.deepcopy(self._entityset)
         # perform signal processing
@@ -498,26 +516,38 @@ class Zephyr:
                 signal_window_size,
                 signal_replace_dataframe,
                 **sigpro_kwargs)
-        
+
         # add interesting values for where primitives
         if add_interesting_values:
-            entityset_copy.add_interesting_values(max_values = max_interesting_values, verbose = verbose,dataframe_name = interesting_dataframe_name, values = interesting_values)
-
+            entityset_copy.add_interesting_values(
+                max_values=max_interesting_values,
+                verbose=verbose,
+                dataframe_name=interesting_dataframe_name,
+                values=interesting_values)
 
         feature_matrix, features = ft.dfs(
             entityset=entityset_copy, cutoff_time=self._label_times,
-            target_dataframe_name=target_dataframe_name, instance_ids=instance_ids,
-            agg_primitives=agg_primitives, trans_primitives=trans_primitives, groupby_trans_primitives=groupby_trans_primitives,
-            allowed_paths=allowed_paths, max_depth=max_depth, ignore_dataframes=ignore_dataframes, ignore_columns=ignore_columns,
+            target_dataframe_name=target_dataframe_name,
+            instance_ids=instance_ids, agg_primitives=agg_primitives,
+            trans_primitives=trans_primitives,
+            groupby_trans_primitives=groupby_trans_primitives,
+            allowed_paths=allowed_paths, max_depth=max_depth,
+            ignore_dataframes=ignore_dataframes, ignore_columns=ignore_columns,
             primitive_options=primitive_options, seed_features=seed_features,
-            drop_contains=drop_contains, drop_exact=drop_exact, where_primitives=where_primitives, max_features=max_features,
-            cutoff_time_in_index=cutoff_time_in_index, save_progress=save_progress, features_only=features_only, training_window=training_window,
-            approximate=approximate, chunk_size=chunk_size, n_jobs=n_jobs, dask_kwargs=dask_kwargs, verbose=verbose, return_types=return_types,
-            progress_callback=progress_callback, include_cutoff_time=include_cutoff_time,
+            drop_contains=drop_contains, drop_exact=drop_exact,
+            where_primitives=where_primitives, max_features=max_features,
+            cutoff_time_in_index=cutoff_time_in_index,
+            save_progress=save_progress, features_only=features_only,
+            training_window=training_window, approximate=approximate,
+            chunk_size=chunk_size, n_jobs=n_jobs,
+            dask_kwargs=dask_kwargs, verbose=verbose,
+            return_types=return_types, progress_callback=progress_callback,
+            include_cutoff_time=include_cutoff_time
         )
-        self._feature_matrix = self._clean_feature_matrix(feature_matrix, label_col_name=self._label_col_name)
+        self._feature_matrix = self._clean_feature_matrix(
+            feature_matrix, label_col_name=self._label_col_name)
         self._features = features
-        
+
         return self._feature_matrix, self._features, entityset_copy
 
     @guide
@@ -525,8 +555,9 @@ class Zephyr:
         return self._feature_matrix, self._label_col_name, self._features
 
     @guide
-    def set_feature_matrix(self, feature_matrix, labels = None,label_col_name="label"):
-        assert isinstance(feature_matrix, pd.DataFrame) and (labels is not None or label_col_name in feature_matrix.columns )
+    def set_feature_matrix(self, feature_matrix, labels=None, label_col_name="label"):
+        assert isinstance(feature_matrix, pd.DataFrame) and (
+            labels is not None or label_col_name in feature_matrix.columns)
         if labels is not None:
             feature_matrix[label_col_name] = labels
         self._feature_matrix = self._clean_feature_matrix(
@@ -578,7 +609,8 @@ class Zephyr:
 
     @guide
     def get_train_test_split(self):
-        if self._X_train is None or self._X_test is None or self._y_train is None or self._y_test is None:
+        if (self._X_train is None or self._X_test is None or
+                self._y_train is None or self._y_test is None):
             return None
         return self._X_train, self._X_test, self._y_train, self._y_test
 
@@ -588,9 +620,11 @@ class Zephyr:
 
     @guide
     def fit_pipeline(
-        self, pipeline="xgb_classifier", pipeline_hyperparameters=None, X=None, y=None, visual=False, **kwargs
-    ):  # kwargs indicate the parameters of the current pipeline
-        self._pipeline = self._get_mlpipeline(pipeline, pipeline_hyperparameters)
+            self, pipeline="xgb_classifier", pipeline_hyperparameters=None,
+            X=None, y=None, visual=False, **kwargs):
+        # kwargs indicate the parameters of the current pipeline
+        self._pipeline = self._get_mlpipeline(
+            pipeline, pipeline_hyperparameters)
 
         if X is None:
             X = self._X_train
@@ -610,7 +644,6 @@ class Zephyr:
     @guide
     def get_fitted_pipeline(self):
         return self._pipeline
-
 
     @guide
     def predict(self, X=None, visual=False, **kwargs):
@@ -683,7 +716,8 @@ class Zephyr:
                 else:
                     metric_args = {}
 
-                res = metric_primitive.produce(y_true=self._y_test, **metric_context, **metric_args)
+                res = metric_primitive.produce(
+                    y_true=self._y_test, **metric_context, **metric_args)
                 results[metric_primitive.name] = res
             except Exception as e:
                 LOGGER.error(
@@ -890,11 +924,13 @@ if __name__ == "__main__":
     #     "pidata",
     # )
 
-    # obj.set_entityset(entityset_path = "/Users/raymondpan/zephyr/Zephyr-repo/brake_pad_es", es_type = 'scada')
+    # obj.set_entityset(entityset_path =
+    # "/Users/raymondpan/zephyr/Zephyr-repo/brake_pad_es", es_type = 'scada')
 
     # obj.set_labeling_function(name="brake_pad_presence")
 
-    # obj.generate_label_times(labeling_fn="brake_pad_presence", num_samples=10, gap="20d")
+    # obj.generate_label_times(labeling_fn="brake_pad_presence",
+    # num_samples=10, gap="20d")
     # # print(obj.get_label_times())
 
     # obj.generate_feature_matrix_and_labels(

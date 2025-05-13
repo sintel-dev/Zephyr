@@ -96,7 +96,8 @@ def merge_work_orders_notifications_data():
     changed_wo_data['WTG'] = ['A001', 'A001']
     changed_notif_data = NOTIFICATIONS_DATA.copy()
     # matching the output of the merge
-    changed_notif_data['Functional location_y'] = changed_notif_data.pop('Functional location')
+    changed_notif_data['Functional location_y'] = changed_notif_data.pop(
+        'Functional location')
     changed_notif_data['Functional location description_y'] = (
         changed_notif_data.pop('Functional location description'))
     # matching the notifications update

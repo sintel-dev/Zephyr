@@ -19,7 +19,8 @@ def test_merge_labeling_and_true():
         lambda df: True,
         lambda df: True
     ]
-    assert 1 == merge_binary_labeling_functions(functions, and_connected=True)(pd.DataFrame())
+    assert 1 == merge_binary_labeling_functions(
+        functions, and_connected=True)(pd.DataFrame())
 
 
 def test_merge_labeling_and_false():
@@ -27,7 +28,8 @@ def test_merge_labeling_and_false():
         lambda df: True,
         lambda df: False
     ]
-    assert 0 == merge_binary_labeling_functions(functions, and_connected=True)(pd.DataFrame())
+    assert 0 == merge_binary_labeling_functions(
+        functions, and_connected=True)(pd.DataFrame())
 
 
 def test_merge_labeling_or_true():
@@ -35,7 +37,8 @@ def test_merge_labeling_or_true():
         lambda df: False,
         lambda df: True
     ]
-    assert 1 == merge_binary_labeling_functions(functions, and_connected=False)(pd.DataFrame())
+    assert 1 == merge_binary_labeling_functions(
+        functions, and_connected=False)(pd.DataFrame())
 
 
 def test_merge_labeling_or_false():
@@ -43,7 +46,8 @@ def test_merge_labeling_or_false():
         lambda df: False,
         lambda df: False
     ]
-    assert 0 == merge_binary_labeling_functions(functions, and_connected=False)(pd.DataFrame())
+    assert 0 == merge_binary_labeling_functions(
+        functions, and_connected=False)(pd.DataFrame())
 
 
 def test_categorical_presence_true():

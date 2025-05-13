@@ -1,11 +1,7 @@
 from zephyr_ml.labeling import utils
 from zephyr_ml.labeling.data_labeler import DataLabeler
 from zephyr_ml.labeling.labeling_functions import (
-    brake_pad_presence,
-    converter_replacement_presence,
-    gearbox_replace_presence,
-    total_power_loss,
-)
+    brake_pad_presence, converter_replacement_presence, gearbox_replace_presence, total_power_loss)
 
 LABELING_FUNCTIONS = [
     brake_pad_presence,
@@ -28,7 +24,8 @@ def get_labeling_functions():
     functions = {}
     for function in LABELING_FUNCTIONS:
         name = function.__name__
-        functions[name] = {"obj": function, "desc": function.__doc__.split("\n")[0]}
+        functions[name] = {"obj": function, "desc": function.__doc__.split("\n")[
+            0]}
 
     return functions
 

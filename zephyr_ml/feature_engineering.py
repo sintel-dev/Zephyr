@@ -38,7 +38,8 @@ def process_signals(es, signal_dataframe_name, signal_column, transformations, a
             old_relationship = relationship
             groupby_index = relationship.child_column.name
 
-    pipeline = SigPro(transformations, aggregations, values_column_name=signal_column, **kwargs)
+    pipeline = SigPro(transformations, aggregations,
+                      values_column_name=signal_column, **kwargs)
 
     processed_df, f_cols = pipeline.process_signal(
         signal_df,
@@ -54,7 +55,6 @@ def process_signals(es, signal_dataframe_name, signal_column, transformations, a
             signal_dataframe_name,
             time_index=time_index,
             index='_index')
-        
 
     else:
         df_name = '{}_processed'.format(signal_df.ww.name)

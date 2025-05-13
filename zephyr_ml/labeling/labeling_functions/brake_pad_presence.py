@@ -36,7 +36,8 @@ def brake_pad_presence(es, column_map={}):
         a = ds[comments]
         a = a.fillna('')
         a = a.str.lower()
-        f = any(a.apply(lambda d: ('brake' in d) and ('pad' in d) and ('yaw' not in d)))
+        f = any(a.apply(lambda d: ('brake' in d)
+                and ('pad' in d) and ('yaw' not in d)))
         return f
 
     meta = {

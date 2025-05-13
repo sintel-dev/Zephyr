@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from mlblocks import MLBlock
+
 from zephyr_ml.core import DEFAULT_METRICS, Zephyr
 
 
@@ -10,8 +11,10 @@ class TestZephyr:
     def base_dfs():
         alarms_df = pd.DataFrame({
             'COD_ELEMENT': [0, 0],
-            'DAT_START': [pd.Timestamp('2022-01-01 00:00:00'), pd.Timestamp('2022-03-01 11:12:13')],
-            'DAT_END': [pd.Timestamp('2022-01-01 13:00:00'), pd.Timestamp('2022-03-02 11:12:13')],
+            'DAT_START': [pd.Timestamp('2022-01-01 00:00:00'),
+                          pd.Timestamp('2022-03-01 11:12:13')],
+            'DAT_END': [pd.Timestamp('2022-01-01 13:00:00'),
+                        pd.Timestamp('2022-03-02 11:12:13')],
             'IND_DURATION': [0.5417, 1.0],
             'COD_ALARM': [12345, 98754],
             'COD_ALARM_INT': [12345, 98754],
@@ -20,8 +23,10 @@ class TestZephyr:
         })
         stoppages_df = pd.DataFrame({
             'COD_ELEMENT': [0, 0],
-            'DAT_START': [pd.Timestamp('2022-01-01 00:00:00'), pd.Timestamp('2022-03-01 11:12:13')],
-            'DAT_END': [pd.Timestamp('2022-01-08 11:07:17'), pd.Timestamp('2022-03-01 17:00:13')],
+            'DAT_START': [pd.Timestamp('2022-01-01 00:00:00'),
+                          pd.Timestamp('2022-03-01 11:12:13')],
+            'DAT_END': [pd.Timestamp('2022-01-08 11:07:17'),
+                        pd.Timestamp('2022-03-01 17:00:13')],
             'DES_WO_NAME': ['stoppage name 1', 'stoppage name 2'],
             'DES_COMMENTS': ['description of stoppage 1', 'description of stoppage 2'],
             'COD_WO': [12345, 67890],
@@ -40,12 +45,15 @@ class TestZephyr:
             'COD_ORDER': [12345, 67890],
             'IND_QUANTITY': [1, -20],
             'COD_MATERIAL_SAP': [36052411, 67890],
-            'DAT_POSTING': [pd.Timestamp('2022-01-01 00:00:00'), pd.Timestamp('2022-03-01 00:00:00')],
+            'DAT_POSTING': [pd.Timestamp('2022-01-01 00:00:00'),
+                            pd.Timestamp('2022-03-01 00:00:00')],
             'COD_MAT_DOC': [77889900, 12345690],
             'DES_MEDIUM': ['Description of notification 1', 'Description of notification 2'],
             'COD_NOTIF': [567890123, 32109877],
-            'DAT_MALF_START': [pd.Timestamp('2021-12-25 18:07:10'), pd.Timestamp('2022-02-28 06:04:00')],
-            'DAT_MALF_END': [pd.Timestamp('2022-01-08 11:07:17'), pd.Timestamp('2022-03-01 17:00:13')],
+            'DAT_MALF_START': [pd.Timestamp('2021-12-25 18:07:10'),
+                               pd.Timestamp('2022-02-28 06:04:00')],
+            'DAT_MALF_END': [pd.Timestamp('2022-01-08 11:07:17'),
+                             pd.Timestamp('2022-03-01 17:00:13')],
             'IND_BREAKDOWN_DUR': [14.1378, 2.4792],
             'FUNCT_LOC_DES': ['location description 1', 'location description 2'],
             'COD_ALARM': [12345, 12345],
@@ -54,15 +62,19 @@ class TestZephyr:
         work_orders_df = pd.DataFrame({
             'COD_ELEMENT': [0, 0],
             'COD_ORDER': [12345, 67890],
-            'DAT_BASIC_START': [pd.Timestamp('2022-01-01 00:00:00'), pd.Timestamp('2022-03-01 00:00:00')],
-            'DAT_BASIC_END': [pd.Timestamp('2022-01-09 00:00:00'), pd.Timestamp('2022-03-02 00:00:00')],
+            'DAT_BASIC_START': [pd.Timestamp('2022-01-01 00:00:00'),
+                                pd.Timestamp('2022-03-01 00:00:00')],
+            'DAT_BASIC_END': [pd.Timestamp('2022-01-09 00:00:00'),
+                              pd.Timestamp('2022-03-02 00:00:00')],
             'COD_EQUIPMENT': [98765, 98765],
             'COD_MAINT_PLANT': ['ABC', 'ABC'],
             'COD_MAINT_ACT_TYPE': ['XYZ', 'XYZ'],
             'COD_CREATED_BY': ['A1234', 'B6789'],
             'COD_ORDER_TYPE': ['A', 'B'],
-            'DAT_REFERENCE': [pd.Timestamp('2022-01-01 00:00:00'), pd.Timestamp('2022-03-01 00:00:00')],
-            'DAT_CREATED_ON': [pd.Timestamp('2022-03-01 00:00:00'), pd.Timestamp('2022-04-18 00:00:00')],
+            'DAT_REFERENCE': [pd.Timestamp('2022-01-01 00:00:00'),
+                              pd.Timestamp('2022-03-01 00:00:00')],
+            'DAT_CREATED_ON': [pd.Timestamp('2022-03-01 00:00:00'),
+                               pd.Timestamp('2022-04-18 00:00:00')],
             'DAT_VALID_END': [pd.NaT, pd.NaT],
             'DAT_VALID_START': [pd.NaT, pd.NaT],
             'COD_SYSTEM_STAT': ['ABC XYZ', 'LMN OPQ'],
@@ -86,7 +98,8 @@ class TestZephyr:
             'PI_LOCAL_SITE_NAME': ['LOC0']
         })
         pidata_df = pd.DataFrame({
-            'time': [pd.Timestamp('2022-01-02 13:21:01'), pd.Timestamp('2022-03-08 13:21:01')],
+            'time': [pd.Timestamp('2022-01-02 13:21:01'),
+                     pd.Timestamp('2022-03-08 13:21:01')],
             'COD_ELEMENT': [0, 0],
             'val1': [9872.0, 559.0],
             'val2': [10.0, -7.0]
@@ -153,40 +166,47 @@ class TestZephyr:
 
     def test_initialize_class(self):
         _ = Zephyr()
-        
 
     def test_generate_entityset(self):
         zephyr = Zephyr()
-        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
+        zephyr.generate_entityset(
+            **self.__class__.kwargs["generate_entityset"])
         es = zephyr.get_entityset()
         assert es is not None
         assert es.id == 'pidata'
 
     def test_generate_label_times(self):
         zephyr = Zephyr()
-        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
-        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
+        zephyr.generate_entityset(
+            **self.__class__.kwargs["generate_entityset"])
+        zephyr.generate_label_times(
+            **self.__class__.kwargs["generate_label_times"])
         label_times = zephyr.get_label_times(visualize=False)
         assert label_times is not None
 
     def test_generate_feature_matrix_and_labels(self):
         zephyr = Zephyr()
-        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
-        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
+        zephyr.generate_entityset(
+            **self.__class__.kwargs["generate_entityset"])
+        zephyr.generate_label_times(
+            **self.__class__.kwargs["generate_label_times"])
         zephyr.generate_feature_matrix(
             **self.__class__.kwargs["generate_feature_matrix"])
-        feature_matrix, label_col_name, features= zephyr.get_feature_matrix()
+        feature_matrix, label_col_name, features = zephyr.get_feature_matrix()
         assert feature_matrix is not None
         assert label_col_name in feature_matrix.columns
         assert features is not None
 
     def test_generate_train_test_split(self):
         zephyr = Zephyr()
-        zephyr.generate_entityset(**self.__class__.kwargs["generate_entityset"])
-        zephyr.generate_label_times(**self.__class__.kwargs["generate_label_times"])
+        zephyr.generate_entityset(
+            **self.__class__.kwargs["generate_entityset"])
+        zephyr.generate_label_times(
+            **self.__class__.kwargs["generate_label_times"])
         zephyr.generate_feature_matrix(
             **self.__class__.kwargs["generate_feature_matrix"])
-        zephyr.generate_train_test_split(**self.__class__.kwargs["generate_train_test_split"])
+        zephyr.generate_train_test_split(
+            **self.__class__.kwargs["generate_train_test_split"])
         train_test_split = zephyr.get_train_test_split()
         assert train_test_split is not None
         X_train, X_test, y_train, y_test = train_test_split
@@ -217,7 +237,8 @@ class TestZephyr:
     def test_fit_pipeline_visual(self):
         zephyr = Zephyr()
         zephyr.set_train_test_split(*self.base_train_test_split())
-        output = zephyr.fit_pipeline(visual=True, **self.__class__.kwargs["fit_pipeline"])
+        output = zephyr.fit_pipeline(
+            visual=True, **self.__class__.kwargs["fit_pipeline"])
         assert isinstance(output, dict)
         assert list(output.keys()) == ['threshold', 'scores']
         pipeline = zephyr.get_fitted_pipeline()

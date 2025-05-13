@@ -144,7 +144,8 @@ def categorical_presence(categorical_column, value):
         """
         return int(df[categorical_column].isin([value]).sum() > 0)
 
-    categorical_function.__doc__ = categorical_function.__doc__.format(categorical_column, value)
+    categorical_function.__doc__ = categorical_function.__doc__.format(
+        categorical_column, value)
     return categorical_function
 
 
@@ -177,7 +178,8 @@ def keyword_in_text(keyword, columns=None):
 
         return int(mask.sum() != 0)
 
-    keyword_function.__doc__ = keyword_function.__doc__.format(keyword, columns)
+    keyword_function.__doc__ = keyword_function.__doc__.format(
+        keyword, columns)
     return keyword_function
 
 
@@ -203,7 +205,8 @@ def greater_than(numerical_column, threshold):
         series = df[numerical_column]
         return int(len(series[series > threshold]) > 0)
 
-    numerical_function.__doc__ = numerical_function.__doc__.format(numerical_column, threshold)
+    numerical_function.__doc__ = numerical_function.__doc__.format(
+        numerical_column, threshold)
     return numerical_function
 
 
@@ -228,5 +231,6 @@ def total_duration(start_time, end_time):
         """
         return ((df[end_time] - df[start_time]).dt.total_seconds()).sum()
 
-    duration_function.__doc__ = duration_function.__doc__.format(start_time, end_time)
+    duration_function.__doc__ = duration_function.__doc__.format(
+        start_time, end_time)
     return duration_function
