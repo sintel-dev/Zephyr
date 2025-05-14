@@ -40,10 +40,8 @@ class GuideHandler:
         self.getter_to_step_map = {}
 
         self.terms = []
-        self.skipped = []
         for idx, (producers, getters) in enumerate(self.producers_and_getters):
             self.terms.append(-1)
-            self.skipped.append(False)
 
             for prod in producers:
                 self.producer_to_step_map[prod.__name__] = idx
@@ -96,25 +94,13 @@ class GuideHandler:
     def try_log_skipping_steps_warning(self, name, next_step):
         steps_skipped = self.get_steps_in_between(self.current_step, next_step)
         if len(steps_skipped) > 0:
-            for step in range(self.current_step + 1, next_step):
-                self.skipped[step] = True
             necc_steps = self.join_steps(steps_skipped)
             LOGGER.warning(
                 f"Performing {name}. You are skipping the following steps:\n{necc_steps}")
 
-    def try_log_using_stale_warning(self, name, next_step):
-        latest_up_to_date = self.get_last_up_to_date(next_step)
-        steps_needed = self.get_steps_in_between(
-            latest_up_to_date - 1, next_step)
-        if len(steps_needed) > 0:
-            LOGGER.warning(f"Performing {name}. You are in a stale state and \
-                        using potentially stale data to perform this step. \
-                        Re-run the following steps to return to a present state:\n: \
-                        {steps_needed}")
-
     def try_log_making_stale_warning(self, name, next_step):
         next_next_step = next_step + 1
-        prod_steps = f"{next_next_step}. \
+        prod_steps = f"step {next_next_step}: \
             {' or '.join(self.producers_and_getters[next_next_step][0])}"
         # add later set methods
         get_steps = self.join_steps(
@@ -124,17 +110,7 @@ class GuideHandler:
         LOGGER.warning(f"Performing {name}. You are beginning a new iteration.\
                         Any data returned by the following get methods will be \
                        considered stale:\n{get_steps}. To continue with this \
-                        iteration, please perform:\n{prod_steps}")
-
-    # stale must be before b/c user must have regressed with progress that contains skips
-    # return set method, and next possible up to date key method
-    def try_log_inconsistent_warning(self, name, next_step):
-        set_method_str = self.producers_and_getters[next_step][0][1].__name__
-        latest_up_to_date = self.get_last_up_to_date(next_step)
-        LOGGER.warning(f"Unable to perform {name} because some steps have been\
-                    skipped. You can call the corresponding set method: \
-                    {set_method_str} or re run steps starting at or before \
-                    {latest_up_to_date}")
+                        iteration, please perform \n{prod_steps}")
 
     def log_get_inconsistent_warning(self, name, next_step):
         prod_steps = f"{next_step}. \
@@ -169,6 +145,7 @@ class GuideHandler:
         next_step = self.producer_to_step_map[name]
         self.try_log_making_stale_warning(next_step)
         self.cur_term += 1
+        # mark everything prior to next step as current term
         for i in range(0, next_step):
             if self.terms[i] != -1:
                 self.terms[i] = self.cur_term
@@ -190,17 +167,51 @@ class GuideHandler:
 
     # dont update current step or terms
 
-    def try_perform_stale_or_inconsistent_producer_step(
+    def try_perform_inconsistent_producer_step(  # add using stale and overwriting
             self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
         next_step = self.producer_to_step_map[name]
-        if self.terms[next_step - 1] == -1:  # inconsistent
-            self.try_log_inconsistent_warning(name, next_step)
-        else:
-            self.try_log_using_stale_warning(name, next_step)
-            res = self.perform_producer_step(
-                zephyr, method, *method_args, **method_kwargs)
-            return res
+        # inconsistent forward step: performing key method but previous step is not up to date
+        if next_step >= self.current_step and self.terms[next_step-1] != self.cur_term:
+            corr_set_method = self.producers_and_getters[next_step][0][1].__name__
+            prev_step = next_step-1
+            prev_set_method = self.producers_and_getters[prev_step][0][1].__name__
+            prev_key_method = self.producers_and_getters[prev_step][0][0].__name__
+            LOGGER.warning(f"Unable to perform {name} because you are performing a key method at\
+                            step {next_step} but the result of the previous step, \
+                            step {prev_step}, is not up to date.\
+                           If you already have the data for step {next_step}, \
+                            you can use the corresponding set method: {corr_set_method}.\
+                            Otherwise, please perform step {prev_step} \
+                                with {prev_key_method} or {prev_set_method}.")
+        # inconsistent backward step: performing set method at nonzero step
+        elif next_step < self.current_step and name in self.set_method:
+            first_set_method = self.producers_and_getters[0][0][1].__name__
+            corr_key_method = self.producers_and_getters[next_step][0][0].__name__
+            LOGGER.warning(f"Unable to perform {name} because you are going backwards \
+                           and performing step {next_step} with a set method.\
+                           You can only perform a backwards step with a set \
+                            method at step 0: {first_set_method}.\
+                            If you would like to perform step {next_step}, \
+                                please use the corresponding key method: {corr_key_method}.")
+        # inconsistent backward step: performing key method but previous step is not up to date
+        elif next_step < self.current_step and self.terms[next_step-1] != self.cur_term:
+            prev_step = next_step-1
+            prev_key_method = self.producers_and_getters[prev_step][0][0].__name__
+            corr_set_method = self.producers_and_getters[next_step][0][1].__name__
+            LOGGER.warning(f"Unable to perform {name} because you are going \
+                           backwards and starting a new iteration by\
+                           performing a key method at step {next_step} \
+                            but the result of the previous step,\
+                            step {prev_step}, is not up to date.\
+                            Please perform step {prev_step} with {prev_key_method} first.\
+                           If you already have the data for \
+                            step {next_step} from the previous iteration,\
+                           re-performing {prev_key_method} with the same \
+                            arguments should generate the same result.\
+                            Otherwise, if the data is unrelated, \
+                                please create a new Zephyr instance\
+                            and use its {corr_set_method} method.")
 
     def try_perform_getter_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
@@ -222,13 +233,20 @@ class GuideHandler:
         if method_name in self.producer_to_step_map:
             # up-todate
             next_step = self.producer_to_step_map[method_name]
-            if (method_name in self.set_methods or next_step == 0 or
-                    self.terms[next_step - 1] == self.cur_term):
+            if (next_step == 0 or  # 0 step always valid, starting new iteration
+                # forward step only valid if set method or key method w/ no skips
+                (next_step >= self.current_step and
+                 (method_name in self.set_methods or
+                  self.terms[next_step - 1] == self.cur_term)) or
+                    # backward step only valid if key method w/ previous step up to date
+                    (next_step < self.current_step and
+                     (method_name not in self.set_methods and
+                      self.terms[next_step - 1] == self.cur_term))):
                 res = self.try_perform_producer_step(
                     zephyr, method, *method_args, **method_kwargs)
                 return res
             else:  # stale or inconsistent
-                res = self.try_perform_stale_or_inconsistent_producer_step(
+                res = self.try_perform_inconsistent_producer_step(
                     zephyr, method, *method_args, **method_kwargs)
                 return res
         elif method_name in self.getter_to_step_map:
