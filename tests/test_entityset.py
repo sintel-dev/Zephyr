@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from zephyr_ml import create_pidata_entityset, create_scada_entityset
+from zephyr_ml import _create_entityset
 
 
 @pytest.fixture
@@ -119,6 +119,14 @@ def scada_dfs(base_dfs):
     return {**base_dfs, 'scada': scada_df}
 
 
+def create_pidata_entityset(pidata_dfs):
+    return _create_entityset(pidata_dfs, es_type="pidata")
+
+
+def create_scada_entityset(scada_dfs):
+    return _create_entityset(scada_dfs, es_type="scada")
+
+
 def test_create_pidata_missing_entities(pidata_dfs):
     error_msg = 'Missing dataframes for entities notifications.'
 
@@ -206,7 +214,7 @@ def test_missing_time_indices(pidata_dfs):
 def test_default_create_pidata_entityset(pidata_dfs):
     es = create_pidata_entityset(pidata_dfs)
 
-    assert es.id == 'PI data'
+    assert es.id == 'pidata'
     assert set(es.dataframe_dict.keys()) == set(
         ['alarms', 'turbines', 'stoppages', 'work_orders', 'notifications', 'pidata'])
 
@@ -214,6 +222,6 @@ def test_default_create_pidata_entityset(pidata_dfs):
 def test_default_create_scada_entityset(scada_dfs):
     es = create_scada_entityset(scada_dfs)
 
-    assert es.id == 'SCADA data'
+    assert es.id == 'scada'
     assert set(es.dataframe_dict.keys()) == set(
         ['alarms', 'turbines', 'stoppages', 'work_orders', 'notifications', 'scada'])

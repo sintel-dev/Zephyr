@@ -23,7 +23,8 @@ class FindThresholdTest(TestCase):
         threshold.fit(y, y_hat)
 
         assert threshold._threshold == value
-        binary_y_hat, detected_threshold, scores = threshold.apply_threshold(y_hat)
+        binary_y_hat, detected_threshold, scores = threshold.apply_threshold(
+            y_hat)
         np.testing.assert_allclose(binary_y_hat, y)
 
     def test_1d(self):

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from zephyr_ml import create_pidata_entityset, create_scada_entityset
+from zephyr_ml import _create_entityset
 from zephyr_ml.feature_engineering import process_signals
 
 
@@ -122,12 +122,12 @@ def scada_dfs(base_dfs):
 
 @pytest.fixture
 def pidata_es(pidata_dfs):
-    return create_pidata_entityset(pidata_dfs)
+    return _create_entityset(pidata_dfs, "pidata")
 
 
 @pytest.fixture
 def scada_es(scada_dfs):
-    return create_scada_entityset(scada_dfs)
+    return _create_entityset(scada_dfs, "scada")
 
 
 @pytest.fixture
@@ -170,8 +170,10 @@ def test_process_signals_pidata(pidata_es, transformations, aggregations):
         "fft.mean.mean_value": [9872, None, 559]
     })
     expected['COD_ELEMENT'] = expected['COD_ELEMENT'].astype('category')
-    expected['fft.mean.mean_value'] = expected['fft.mean.mean_value'].astype('float64')
-    processed['fft.mean.mean_value'] = processed['fft.mean.mean_value'].astype('float64')
+    expected['fft.mean.mean_value'] = expected['fft.mean.mean_value'].astype(
+        'float64')
+    processed['fft.mean.mean_value'] = processed['fft.mean.mean_value'].astype(
+        'float64')
 
     assert pidata_es['pidata_processed'].shape[0] == 3
     assert pidata_es['pidata_processed'].shape[1] == 4
@@ -202,8 +204,10 @@ def test_process_signals_pidata_replace(pidata_es, transformations, aggregations
         "fft.mean.mean_value": [9872, None, 559]
     })
     expected['COD_ELEMENT'] = expected['COD_ELEMENT'].astype('category')
-    expected['fft.mean.mean_value'] = expected['fft.mean.mean_value'].astype('float64')
-    processed['fft.mean.mean_value'] = processed['fft.mean.mean_value'].astype('float64')
+    expected['fft.mean.mean_value'] = expected['fft.mean.mean_value'].astype(
+        'float64')
+    processed['fft.mean.mean_value'] = processed['fft.mean.mean_value'].astype(
+        'float64')
 
     assert pidata_es['pidata'].shape[0] == 3
     assert pidata_es['pidata'].shape[1] == 4
@@ -233,7 +237,8 @@ def test_process_signals_scada(scada_es, transformations, aggregations):
         "fft.mean.mean_value": [1002, None, 56.8]
     })
     expected['COD_ELEMENT'] = expected['COD_ELEMENT'].astype('category')
-    expected['fft.mean.mean_value'] = expected['fft.mean.mean_value'].astype('float64')
+    expected['fft.mean.mean_value'] = expected['fft.mean.mean_value'].astype(
+        'float64')
     after = scada_es['scada'].copy()
 
     assert scada_es['scada_processed'].shape[0] == 3
@@ -263,7 +268,8 @@ def test_process_signals_scada_replace(scada_es, transformations, aggregations):
         "fft.mean.mean_value": [1002, None, 56.8]
     })
     expected['COD_ELEMENT'] = expected['COD_ELEMENT'].astype('category')
-    expected['fft.mean.mean_value'] = expected['fft.mean.mean_value'].astype('float64')
+    expected['fft.mean.mean_value'] = expected['fft.mean.mean_value'].astype(
+        'float64')
 
     assert scada_es['scada'].shape[0] == 3
     assert scada_es['scada'].shape[1] == 4

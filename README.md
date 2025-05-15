@@ -13,26 +13,26 @@
 
 A machine learning library for assisting in the generation of machine learning problems for wind farms operations data by analyzing past occurrences of events.
 
- | Important Links                     |                                                                      |
- | ----------------------------------- | -------------------------------------------------------------------- |
- | :computer: **[Website]**            | Check out the Sintel Website for more information about the project. |
- | :book: **[Documentation]**          | Quickstarts, User and Development Guides, and API Reference.         |
- | :star: **[Tutorials]**              | Checkout our notebooks                                               |
- | :octocat: **[Repository]**          | The link to the Github Repository of this library.                   |
- | :scroll: **[License]**              | The repository is published under the MIT License.                   |
- | :keyboard: **[Development Status]** | This software is in its Pre-Alpha stage.                             |
- | ![][Slack Logo] **[Community]**    | Join our Slack Workspace for announcements and discussions.          |
+| Important Links                     |                                                                      |
+| ----------------------------------- | -------------------------------------------------------------------- |
+| :computer: **[Website]**            | Check out the Sintel Website for more information about the project. |
+| :book: **[Documentation]**          | Quickstarts, User and Development Guides, and API Reference.         |
+| :star: **[Tutorials]**              | Checkout our notebooks                                               |
+| :octocat: **[Repository]**          | The link to the Github Repository of this library.                   |
+| :scroll: **[License]**              | The repository is published under the MIT License.                   |
+| :keyboard: **[Development Status]** | This software is in its Pre-Alpha stage.                             |
+| ![][Slack Logo] **[Community]**     | Join our Slack Workspace for announcements and discussions.          |
 
- [Website]: https://sintel.dev/
- [Documentation]: https://dtail.gitbook.io/zephyr/
- [Repository]: https://github.com/sintel-dev/Zephyr
- [Tutorials]: https://github.com/sintel-dev/Zephyr/blob/master/notebooks
- [License]: https://github.com/sintel-dev/Zephyr/blob/master/LICENSE
- [Development Status]: https://pypi.org/search/?c=Development+Status+%3A%3A+2+-+Pre-Alpha
- [Community]: https://join.slack.com/t/sintel-space/shared_invite/zt-q147oimb-4HcphcxPfDAM0O9_4PaUtw
- [Slack Logo]: https://github.com/sintel-dev/Orion/blob/master/docs/images/slack.png
+[Website]: https://sintel.dev/
+[Documentation]: https://dtail.gitbook.io/zephyr/
+[Repository]: https://github.com/sintel-dev/Zephyr
+[Tutorials]: https://github.com/sintel-dev/Zephyr/blob/master/notebooks
+[License]: https://github.com/sintel-dev/Zephyr/blob/master/LICENSE
+[Development Status]: https://pypi.org/search/?c=Development+Status+%3A%3A+2+-+Pre-Alpha
+[Community]: https://join.slack.com/t/sintel-space/shared_invite/zt-q147oimb-4HcphcxPfDAM0O9_4PaUtw
+[Slack Logo]: https://github.com/sintel-dev/Orion/blob/master/docs/images/slack.png
 
- - Homepage: https://github.com/signals-dev/zephyr
+- Homepage: https://github.com/signals-dev/zephyr
 
 # Overview
 
@@ -42,17 +42,17 @@ occurrences of events.
 
 The main features of **Zephyr** are:
 
-* **EntitySet creation**: tools designed to represent wind farm data and the relationship
-between different tables. We have functions to create EntitySets for datasets with PI data
-and datasets using SCADA data.
-* **Labeling Functions**: a collection of functions, as well as tools to create custom versions
-of them, ready to be used to analyze past operations data in the search for occurrences of
-specific types of events in the past.
-* **Prediction Engineering**: a flexible framework designed to apply labeling functions on
-wind turbine operations data in a number of different ways to create labels for custom
-Machine Learning problems.
-* **Feature Engineering**: a guide to using Featuretools to apply automated feature engineerinig
-to wind farm data.
+- **EntitySet creation**: tools designed to represent wind farm data and the relationship
+  between different tables. We have functions to create EntitySets for datasets with PI data
+  and datasets using SCADA data.
+- **Labeling Functions**: a collection of functions, as well as tools to create custom versions
+  of them, ready to be used to analyze past operations data in the search for occurrences of
+  specific types of events in the past.
+- **Prediction Engineering**: a flexible framework designed to apply labeling functions on
+  wind turbine operations data in a number of different ways to create labels for custom
+  Machine Learning problems.
+- **Feature Engineering**: a guide to using Featuretools to apply automated feature engineerinig
+  to wind farm data.
 
 # Install
 
@@ -60,8 +60,7 @@ to wind farm data.
 
 **Zephyr** has been developed and runs on Python 3.8, 3.9, 3.10, 3.11 and 3.12.
 
-Also, although it is not strictly required, the usage of a [virtualenv](
-https://virtualenv.pypa.io/en/latest/) is highly recommended in order to avoid interfering
+Also, although it is not strictly required, the usage of a [virtualenv](https://virtualenv.pypa.io/en/latest/) is highly recommended in order to avoid interfering
 with other software installed in the system where you are trying to run **Zephyr**.
 
 ## Download and Install
@@ -79,35 +78,38 @@ If you want to install from source or contribute to the project please read the
 # Quickstart
 
 In this short tutorial we will guide you through a series of steps that will help you
-getting started with **Zephyr**.
+getting started with **Zephyr**. For more detailed examples, please refer to the tutorial notebooks in the `notebooks` directory:
+
+- `feature_engineering.ipynb`: Learn how to create EntitySets and perform feature engineering
+- `modeling.ipynb`: Learn how to train and evaluate models
+- `visualization.ipynb`: Learn how to visualize your data and results
 
 ## 1. Loading the data
 
-The first step we will be to use preprocessed data to create an EntitySet. Depending on the
-type of data, we will either the `zephyr_ml.create_pidata_entityset` or `zephyr_ml.create_scada_entityset`
-functions.
+The first step will be to use preprocessed data to create an EntitySet. Depending on the
+type of data, we will use either the `generate_entityset` function with `es_type="pidata"`, `es_type="scada"` or `es_type="vibrations"`.
 
 **NOTE**: if you cloned the **Zephyr** repository, you will find some demo data inside the
-`notebooks/data` folder which has been preprocessed to fit the `create_entityset` data
-requirements.
+`notebooks/data` folder which has been preprocessed to fit the data requirements.
 
-```python3
+```python
 import os
 import pandas as pd
-from zephyr_ml import create_scada_entityset
+from zephyr_ml import Zephyr
 
 data_path = 'notebooks/data'
 
 data = {
-  'turbines': pd.read_csv(os.path.join(data_path, 'turbines.csv')),
-  'alarms': pd.read_csv(os.path.join(data_path, 'alarms.csv')),
-  'work_orders': pd.read_csv(os.path.join(data_path, 'work_orders.csv')),
-  'stoppages': pd.read_csv(os.path.join(data_path, 'stoppages.csv')),
-  'notifications': pd.read_csv(os.path.join(data_path, 'notifications.csv')),
-  'scada': pd.read_csv(os.path.join(data_path, 'scada.csv'))
+    'turbines': pd.read_csv(os.path.join(data_path, 'turbines.csv')),
+    'alarms': pd.read_csv(os.path.join(data_path, 'alarms.csv')),
+    'work_orders': pd.read_csv(os.path.join(data_path, 'work_orders.csv')),
+    'stoppages': pd.read_csv(os.path.join(data_path, 'stoppages.csv')),
+    'notifications': pd.read_csv(os.path.join(data_path, 'notifications.csv')),
+    'scada': pd.read_csv(os.path.join(data_path, 'scada.csv'))
 }
 
-scada_es = create_scada_entityset(data)
+zephyr = Zephyr()
+scada_es = zephyr.generate_entityset(data, es_type="scada")
 ```
 
 This will load the turbine, alarms, stoppages, work order, notifications, and SCADA data, and return it
@@ -132,15 +134,10 @@ Entityset: SCADA data
 
 ## 2. Selecting a Labeling Function
 
-The second step will be to choose an adequate **Labeling Function**.
+The second step will be to choose an adequate **Labeling Function**. We can see the list of available labeling functions using the `GET_LABELING_FUNCTIONS` method.
 
-We can see the list of available labeling functions using the `zephyr_ml.labeling.get_labeling_functions`
-function.
-
-```python3
-from zephyr_ml import labeling
-
-labeling.get_labeling_functions()
+```python
+labeling_functions = zephyr.GET_LABELING_FUNCTIONS()
 ```
 
 This will return us a dictionary with the name and a short description of each available
@@ -158,14 +155,14 @@ amount of power lost over a slice of time.
 ## 3. Generate Target Times
 
 Once we have loaded the data and the Labeling Function, we are ready to start using
-the `zephyr_ml.generate_labels` function to generate a Target Times table.
+the `generate_label_times` function to generate a Target Times table.
 
-
-```python3
-from zephyr_ml import DataLabeler
-
-data_labeler = DataLabeler(labeling.labeling_functions.total_power_loss)
-target_times, metadata = data_labeler.generate_label_times(scada_es)
+```python
+target_times, metadata = zephyr.generate_label_times(
+    labeling_fn="total_power_loss",  # or any other labeling function name
+    num_samples=10,
+    gap="20d"
+)
 ```
 
 This will return us a `compose.LabelTimes` containing the three columns required to start
@@ -177,17 +174,16 @@ working on a Machine Learning problem: the turbine ID (COD_ELEMENT), the cutoff 
 ```
 
 ## 4. Feature Engineering
+
 Using EntitySets and LabelTimes allows us to easily use Featuretools for automatic feature generation.
 
-```python3
-import featuretools as ft
-
-feature_matrix, features = ft.dfs(
-    entityset=scada_es,
-    target_dataframe_name='turbines',
+```python
+feature_matrix, features, _ = zephyr.generate_feature_matrix(
+    target_dataframe_name="turbines",
     cutoff_time_in_index=True,
-    cutoff_time=target_times,
-    max_features=20
+    agg_primitives=["count", "sum", "max"],
+    max_features = 20,
+    verbose=True
 )
 ```
 
@@ -195,48 +191,46 @@ Then we get a list of features and the computed `feature_matrix`.
 
 ```
                        TURBINE_PI_ID TURBINE_LOCAL_ID TURBINE_SAP_COD DES_CORE_ELEMENT      SITE DES_CORE_PLANT  ... MODE(alarms.COD_STATUS) MODE(alarms.DES_NAME)  MODE(alarms.DES_TITLE)  NUM_UNIQUE(alarms.COD_ALARM)  NUM_UNIQUE(alarms.COD_ALARM_INT)    label
-COD_ELEMENT time                                                                                                 ...                                                                                                                                               
+COD_ELEMENT time                                                                                                 ...
 0           2022-01-01          TA00               A0          LOC000              T00  LOCATION            LOC  ...                  Alarm1                Alarm1  Description of alarm 1                             1                                 1  45801.0
 
 [1 rows x 21 columns]
 ```
 
-
 ## 5. Modeling
 
-Once we have the feature matrix, we can train a model using the Zephyr interface where you can train, infer, and evaluate a pipeline. 
-First, we need to prepare our dataset for training by creating ``X`` and ``y`` variables and one-hot encoding features.
+Once we have the feature matrix, we can train a model using the Zephyr interface. First, we need to prepare our dataset for training by creating a train-test split.
 
-```python3
-y = list(feature_matrix.pop('label'))
-X = pd.get_dummies(feature_matrix).values
+```python
+X_train, X_test, y_train, y_test = zephyr.generate_train_test_split(
+    test_size=0.2,
+    random_state=42
+)
 ```
 
-In this example, we will use an 'xgb' regression pipeline to predict total power loss.
+In this example, we will use an 'xgb' regression pipeline to predict total power loss. To train the pipeline, we simply call the `fit_pipeline` method.
 
-```python3
-from zephyr_ml import Zephyr
+```python
+zephyr.fit_pipeline(
+    pipeline="xgb_regressor",
+    pipeline_hyperparameters=None,
 
-pipeline_name = 'xgb_regressor'
-
-zephyr = Zephyr(pipeline_name)
+)
 ```
 
-To train the pipeline, we simply use the `fit` function.
-```python3
-zephyr.fit(X, y)
+After it finished training, we can make predictions using `predict`
+
+```python
+y_pred = zephyr.predict(X_test)
 ```
 
-After it finished training,  we can make prediciton using `predict`
+We can also use `evaluate` to obtain the performance of the pipeline.
 
-```python3
-y_pred =  zephyr.predict(X)
+```python
+results = zephyr.evaluate()
 ```
-
-We can also use ``zephyr.evaluate`` to obtain the performance of the pipeline.
 
 # What's Next?
 
 If you want to continue learning about **Zephyr** and all its
-features please have a look at the tutorials found inside the [notebooks folder](
-https://github.com/signals-dev/zephyr/tree/main/notebooks).
+features please have a look at the tutorials found inside the [notebooks folder](https://github.com/signals-dev/zephyr/tree/main/notebooks).

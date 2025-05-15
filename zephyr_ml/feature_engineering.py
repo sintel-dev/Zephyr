@@ -2,7 +2,7 @@ from sigpro import SigPro
 
 
 def process_signals(es, signal_dataframe_name, signal_column, transformations, aggregations,
-                    window_size, replace_dataframe=False, **kwargs):
+                    window_size=None, replace_dataframe=False, **kwargs):
     '''
     Process signals using SigPro.
 
@@ -38,7 +38,8 @@ def process_signals(es, signal_dataframe_name, signal_column, transformations, a
             old_relationship = relationship
             groupby_index = relationship.child_column.name
 
-    pipeline = SigPro(transformations, aggregations, values_column_name=signal_column, **kwargs)
+    pipeline = SigPro(transformations, aggregations,
+                      values_column_name=signal_column, **kwargs)
 
     processed_df, f_cols = pipeline.process_signal(
         signal_df,

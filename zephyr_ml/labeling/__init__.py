@@ -7,8 +7,9 @@ LABELING_FUNCTIONS = [
     brake_pad_presence,
     converter_replacement_presence,
     gearbox_replace_presence,
-    total_power_loss
+    total_power_loss,
 ]
+
 UTIL_FUNCTIONS = [
     utils.aggregate_by_column,
     utils.categorical_presence,
@@ -23,8 +24,17 @@ def get_labeling_functions():
     functions = {}
     for function in LABELING_FUNCTIONS:
         name = function.__name__
-        functions[name] = function.__doc__.split('\n')[0]
+        functions[name] = {"obj": function, "desc": function.__doc__.split("\n")[
+            0]}
 
+    return functions
+
+
+def get_labeling_functions_map():
+    functions = {}
+    for function in LABELING_FUNCTIONS:
+        name = function.__name__
+        functions[name] = function
     return functions
 
 
@@ -32,7 +42,7 @@ def get_helper_functions():
     functions = {}
     for function in UTIL_FUNCTIONS:
         name = function.__name__
-        functions[name] = function.__doc__.split('\n')[0]
+        functions[name] = function.__doc__.split("\n")[0]
 
     return functions
 

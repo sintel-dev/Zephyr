@@ -1,0 +1,58 @@
+{
+    "name": "sklearn.metrics.precision_score",
+    "contributors": [
+        "Raymond Pan <rpan@mit.edu>"
+    ],
+    "documentation": "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html",
+    "description": "Compute the precision.",
+    "classifiers": {
+        "type": "helper"
+    },
+    "modalities": [],
+    "primitive": "sklearn.metrics.precision_score",
+    "produce": {
+        "args": [
+            {
+                "name": "y_true",
+                "type": "ndarray"
+            },
+            {
+                "name": "y_pred",
+                "type": "ndarray"
+            }
+        ],
+        "output": [
+            {
+                "name": "score",
+                "type": "float or int"
+            }
+        ]
+
+    },
+   
+    "hyperparameters": {
+        "fixed": {
+            "labels": {
+                "type": "ndarray",
+                "default": null
+            },
+            "pos_label": {
+                "type": "int, float, bool or str",
+                "default": 1
+            },
+            "average": {
+                "type": "str",
+                "default": "binary"
+            },
+            "sample_weight": {
+                "type": "ndarray",
+                "default": null
+            },
+            "zero_division": {
+                "type": "int, float or str",
+                "default": "warn"
+            }
+        }
+    }
+    
+}

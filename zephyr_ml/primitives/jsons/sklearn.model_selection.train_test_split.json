@@ -1,0 +1,69 @@
+{
+    "name": "zephyr_ml.primitives.preprocessing.train_test_split",
+    "contributors": [
+        "Raymond Pan rpan@mit.edu"
+    ],
+    "documentation": "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html",
+    "description": "Split feature matrix and labels into random train and test subsets.",
+    "classifiers": {
+        "type": "preprocessor"
+    },
+    "modaliaties": [],
+    "primitive": "sklearn.model_selection.train_test_split",
+    "produce": {
+        "args": [
+            {
+                "name": "X",
+                "type": "pandas.DataFrame"
+            }, 
+            {
+                "name": "y",
+                "type": "pandas.DataFrame"
+            }
+
+        ],
+        "output": [
+            {
+                "name": "X_train",
+                "type": "pandas.DataFrame"
+            },
+            {
+                "name": "X_test",
+                "type": "pandas.DataFrame"
+            },
+            {
+                "name": "y_train",
+                "type": "pandas.DataFrame"
+            },
+            {
+                "name": "y_test",
+                "type": "pandas.DataFrame"
+            }
+
+        ]
+    },
+    "hyperparameters": {
+        "fixed": {
+            "test_size": {
+                "type": "float or int",
+                "default": null
+            },
+            "train_size": {
+                "type": "float or int",
+                "default": null
+            },
+            "random_state": {
+                "type": "int",
+                "default": null
+            },
+            "shuffle": {
+                "type": "bool",
+                "default": true
+            },
+            "stratify": {
+                "type": "list",
+                "default": null
+            }
+        }
+    }
+}

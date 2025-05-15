@@ -10,7 +10,8 @@ def test_default_scada_mapped_kwargs():
 
 
 def test_default_pidata_mapped_kwargs():
-    expected = {**DEFAULT_ES_KWARGS, 'pidata': DEFAULT_ES_TYPE_KWARGS['pidata']}
+    expected = {**DEFAULT_ES_KWARGS,
+                'pidata': DEFAULT_ES_TYPE_KWARGS['pidata']}
     actual = get_mapped_kwargs('pidata')
     assert expected == actual
 

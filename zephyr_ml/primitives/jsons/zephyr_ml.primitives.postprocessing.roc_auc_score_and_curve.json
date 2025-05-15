@@ -1,0 +1,49 @@
+{
+  "name": "zephyr_ml.primitives.postprocessing.roc_auc_score_and_curve",
+  "contributors": ["Raymond Pan <rpan@mit.edu>"],
+  "description": "Calculate ROC AUC score and plot curve.",
+  "classifiers": {
+    "type": "helper"
+  },
+  "modalities": [],
+  "primitive": "zephyr_ml.primitives.postprocessing.roc_auc_score_and_curve",
+  "produce": {
+    "args": [
+      {
+        "name": "y_true",
+        "type": "ndarray"
+      },
+      {
+        "name": "y_proba",
+        "type": "ndarray"
+      }
+    ],
+    "output": [
+      {
+        "name": "score",
+        "type": "float"
+      },
+      {
+        "name": "figure",
+        "type": "matplotlib.figure.Figure"
+      }
+    ]
+  },
+
+  "hyperparameters": {
+    "fixed": {
+      "pos_label": {
+        "type": "int, float, bool or str",
+        "default": null
+      },
+      "sample_weight": {
+        "type": "ndarray",
+        "default": null
+      },
+      "drop_intermediate": {
+        "type": "bool",
+        "default": true
+      }
+    }
+  }
+}
