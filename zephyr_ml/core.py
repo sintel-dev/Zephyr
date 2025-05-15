@@ -33,6 +33,7 @@ class GuideHandler:
     def __init__(self, producers_and_getters, set_methods):
         self.cur_term = 0
         self.current_step = -1
+        self.start_point = 0
         self.producers_and_getters = producers_and_getters
         self.set_methods = set_methods
 
@@ -131,8 +132,10 @@ class GuideHandler:
     def try_perform_forward_producer_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
         next_step = self.producer_to_step_map[name]
-        if name in self.set_methods:
+        if name in self.set_methods:  # set method will update start point and start new iteration
             self.try_log_skipping_steps_warning(name, next_step)
+            self.start_point = next_step
+            self.cur_term += 1
         # next_step == 0, set method (already warned), or previous step is up to term
         res = self.perform_producer_step(
             zephyr, method, *method_args, **method_kwargs)
@@ -143,12 +146,17 @@ class GuideHandler:
     def try_perform_backward_producer_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
         next_step = self.producer_to_step_map[name]
-        self.try_log_making_stale_warning(next_step)
+        # starting new iteration
         self.cur_term += 1
-        # mark everything prior to next step as current term
-        for i in range(0, next_step):
-            if self.terms[i] != -1:
-                self.terms[i] = self.cur_term
+        if next_step == 0 or name in self.set_methods:
+            self.start_point = next_step
+        else:  # key method
+            # mark everything from start point to next step as current term
+            for i in range(self.start_point, next_step):
+                if self.terms[i] != -1:
+                    self.terms[i] = self.cur_term
+
+        self.try_log_making_stale_warning(next_step)
         res = self.perform_producer_step(
             zephyr, method, *method_args, **method_kwargs)
         return res
@@ -185,33 +193,35 @@ class GuideHandler:
                             Otherwise, please perform step {prev_step} \
                                 with {prev_key_method} or {prev_set_method}.")
         # inconsistent backward step: performing set method at nonzero step
-        elif next_step < self.current_step and name in self.set_method:
-            first_set_method = self.producers_and_getters[0][0][1].__name__
-            corr_key_method = self.producers_and_getters[next_step][0][0].__name__
-            LOGGER.warning(f"Unable to perform {name} because you are going backwards \
-                           and performing step {next_step} with a set method.\
-                           You can only perform a backwards step with a set \
-                            method at step 0: {first_set_method}.\
-                            If you would like to perform step {next_step}, \
-                                please use the corresponding key method: {corr_key_method}.")
+        # elif next_step < self.current_step and name in self.set_method:
+        #     first_set_method = self.producers_and_getters[0][0][1].__name__
+        #     corr_key_method = self.producers_and_getters[next_step][0][0].__name__
+        #     LOGGER.warning(f"Unable to perform {name} because you are going backwards \
+        #                    and performing step {next_step} with a set method.\
+        #                    You can only perform a backwards step with a set \
+        #                     method at step 0: {first_set_method}.\
+        #                     If you would like to perform step {next_step}, \
+        #                         please use the corresponding key method: {corr_key_method}.")
         # inconsistent backward step: performing key method but previous step is not up to date
         elif next_step < self.current_step and self.terms[next_step-1] != self.cur_term:
             prev_step = next_step-1
             prev_key_method = self.producers_and_getters[prev_step][0][0].__name__
             corr_set_method = self.producers_and_getters[next_step][0][1].__name__
+            prev_get_method = self.producers_and_getters[prev_step][1][0].__name__
+            prev_set_method = self.producers_and_getters[prev_step][0][1].__name__
             LOGGER.warning(f"Unable to perform {name} because you are going \
                            backwards and starting a new iteration by\
                            performing a key method at step {next_step} \
                             but the result of the previous step,\
-                            step {prev_step}, is not up to date.\
-                            Please perform step {prev_step} with {prev_key_method} first.\
-                           If you already have the data for \
-                            step {next_step} from the previous iteration,\
-                           re-performing {prev_key_method} with the same \
-                            arguments should generate the same result.\
-                            Otherwise, if the data is unrelated, \
-                                please create a new Zephyr instance\
-                            and use its {corr_set_method} method.")
+                            step {prev_step}, is STALE.\
+                            If you want to use the STALE result of the PREVIOUS step, \
+                            you can call {prev_get_method} to get the data, then\
+                            {prev_set_method} to set the data, and then recall this method.\
+                            If you want to regenerate the data of the PREVIOUS step, \
+                            please call {prev_key_method}, and then recall this method.\
+                            If you already have the data for THIS step, you can \
+                            call {corr_set_method} to set the data.\
+                            ")
 
     def try_perform_getter_step(self, zephyr, method, *method_args, **method_kwargs):
         name = method.__name__
@@ -234,14 +244,11 @@ class GuideHandler:
             # up-todate
             next_step = self.producer_to_step_map[method_name]
             if (next_step == 0 or  # 0 step always valid, starting new iteration
+                # set method always valid, but will update start point and start new iteration
+                method_name in self.set_methods or
+                    # key method valid if previous step is up to date
+                    self.terms[next_step-1] == self.cur_term):
                 # forward step only valid if set method or key method w/ no skips
-                (next_step >= self.current_step and
-                 (method_name in self.set_methods or
-                  self.terms[next_step - 1] == self.cur_term)) or
-                    # backward step only valid if key method w/ previous step up to date
-                    (next_step < self.current_step and
-                     (method_name not in self.set_methods and
-                      self.terms[next_step - 1] == self.cur_term))):
                 res = self.try_perform_producer_step(
                     zephyr, method, *method_args, **method_kwargs)
                 return res
