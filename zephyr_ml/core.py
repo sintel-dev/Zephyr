@@ -33,7 +33,7 @@ class GuideHandler:
     def __init__(self, producers_and_getters, set_methods):
         self.cur_term = 0
         self.current_step = -1
-        self.start_point = 0
+        self.start_point = -1
         self.producers_and_getters = producers_and_getters
         self.set_methods = set_methods
 
@@ -187,7 +187,7 @@ class GuideHandler:
             prev_key_method = self.producers_and_getters[prev_step][0][0].__name__
             LOGGER.warning(f"Unable to perform {name} because you are performing a key method at\
                             step {next_step} but the result of the previous step, \
-                            step {prev_step}, is not up to date.\
+                            step {prev_step}, is STALE.\
                            If you already have the data for step {next_step}, \
                             you can use the corresponding set method: {corr_set_method}.\
                             Otherwise, please perform step {prev_step} \
