@@ -107,17 +107,20 @@ class GuideHandler:
         return res
 
     def try_log_forward_set_method_warning(self, name, next_step):
+        if self.current_step != -1:
+            from_str = (f"Going from step {self.current_step} to "
+                        f"step {next_step} by performing {name}.")
+        else:
+            from_str = (f"Performing step {next_step} with {name}.")
         LOGGER.warning((f"[GUIDE] STALE WARNING: \n"
-                        f"\tPerforming step {next_step} from "
-                        f"step {self.current_step} with {name}.\n"
+                        f"\t{from_str}\n"
                         f"\tThis is a forward step via a set method.\n"
-                        f"\tThe current step is {self.current_step}.\n"
                         f"\tAll previous steps will be considered stale."))
 
     def try_log_backwards_set_method_warning(self, name, next_step):
         LOGGER.warning((f"[GUIDE] STALE WARNING: \n"
-                        f"\tPerforming step {next_step} from "
-                        f"step {self.current_step} with {name}.\n"
+                        f"\tGoing from step {self.current_step} to "
+                        f"step {next_step} by performing {name}.\n"
                         f"\tThis is a backwards step via a set method.\n"
                         f"\tAll other steps will be considered stale."))
 
@@ -126,8 +129,8 @@ class GuideHandler:
             self.get_steps_in_between(
                 self.current_step, next_step))
         LOGGER.warning((f"[GUIDE] STALE WARNING:\n"
-                        f"\tPerforming step {next_step} from "
-                        f"step {self.current_step} via {name}.\n"
+                        f"\tGoing from step {self.current_step} to "
+                        f"step {next_step} by performing {name}.\n"
                         f"\tThis is a backwards step via a key method.\n"
                         f"\tThe following steps will be considered stale:\n"
                         f"{steps_in_between}"))
