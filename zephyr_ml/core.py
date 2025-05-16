@@ -125,15 +125,18 @@ class GuideHandler:
                         f"\tAll other steps will be considered stale."))
 
     def try_log_backwards_key_method_warning(self, name, next_step):
-        steps_in_between = self.join_steps(
-            self.get_steps_in_between(
-                self.current_step, next_step))
+        steps_in_between = self.get_steps_in_between(next_step, self.current_step)
+        if steps_in_between > 0:
+            steps_in_between_str = (f"\tThe following steps will be considered stale:\n"
+                                    f"{self.join_steps(steps_in_between)}")
+        else:
+            steps_in_between_str = ""
+
         LOGGER.warning((f"[GUIDE] STALE WARNING:\n"
                         f"\tGoing from step {self.current_step} to "
                         f"step {next_step} by performing {name}.\n"
                         f"\tThis is a backwards step via a key method.\n"
-                        f"\tThe following steps will be considered stale:\n"
-                        f"{steps_in_between}"))
+                        f"{steps_in_between_str}"))
 
     def log_get_inconsistent_warning(self, name, next_step):
         prod_steps_str = self.or_join(self.ordered_steps[next_step][0])
