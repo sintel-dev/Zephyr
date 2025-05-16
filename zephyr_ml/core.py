@@ -222,16 +222,16 @@ class GuideHandler:
             prev_set_method = self.or_join(self.ordered_steps[prev_step][1])
             prev_key_method = self.or_join(self.ordered_steps[prev_step][0])
             LOGGER.warning(f"[GUIDE] INCONSISTENCY WARNING:\n"
-                           f"\tUnable to perform {name} because you are performing a key method at"
-                           f"step {next_step} but the result of the previous step,"
-                           f"step {prev_step}, is stale.\n"
-                           f"\tIf you want to use the stale result or"
-                           f"already have the data for step {next_step}, you can use the"
+                           f"\tUnable to perform {name} because you are "
+                           f"performing a key method at step {next_step} but the result of the "
+                           f"previous step, step {prev_step}, is stale.\n"
+                           f"\tIf you want to use the stale result or "
+                           f"already have the data for step {prev_step}, you can use the "
                            f"corresponding set method: {prev_set_method}.\n"
-                           f"\tIf you already have the data for THIS step, you can call"
+                           f"\tIf you already have the data for THIS step, you can call "
                            f"{corr_set_method} to set the data.\n"
-                           f"\tOtherwise, you can regenerate the data of the"
-                           f"previous step by calling {prev_key_method},"
+                           f"\tOtherwise, you can regenerate the data of the "
+                           f"previous step by calling {prev_key_method}, "
                            f"and then recall this method.")
         elif (next_step < self.current_step and
               self.iterations[next_step - 1] != self.cur_iteration):
@@ -240,17 +240,17 @@ class GuideHandler:
             corr_set_method = self.or_join(self.ordered_steps[next_step][1])
             prev_set_method = self.or_join(self.ordered_steps[prev_step][1])
             LOGGER.warning(f"[GUIDE] INCONSISTENCY WARNING:\n"
-                           f"\tUnable to perform {name} because"
-                           f"you are going backwards and starting a new iteration by"
-                           f"performing a key method at step {next_step} but the result of the"
+                           f"\tUnable to perform {name} because "
+                           f"you are going backwards and starting a new iteration by "
+                           f"performing a key method at step {next_step} but the result of the "
                            f"previous step, step {prev_step}, is STALE.\n"
-                           f"\tIf you want to use the STALE result or"
-                           f"already have the data for step {next_step}, you can use the"
+                           f"\tIf you want to use the STALE result or "
+                           f"already have the data for step {prev_step}, you can use the "
                            f"corresponding set method: {prev_set_method}.\n"
-                           f"\tIf you already have the data for THIS step, you can call"
+                           f"\tIf you already have the data for THIS step, you can call "
                            f"{corr_set_method} to set the data.\n"
-                           f"\tOtherwise, you can regenerate the data of the"
-                           f"previous step by calling {prev_key_method},"
+                           f"\tOtherwise, you can regenerate the data of the "
+                           f"previous step by calling {prev_key_method}, "
                            f"and then recall this method."
                            )
 
@@ -415,7 +415,16 @@ class Zephyr:
 
         Returns:
             featuretools.EntitySet: EntitySet containing the processed data and relationships.
+
+        Raises:
+            ValueError: If the entityset type is invalid OR
+                if the entityset does not follow the data input rules.
         """
+        if es_type not in VALIDATE_DATA_FUNCTIONS:
+            raise ValueError(
+                f"Invalid entityset type: {es_type}. Please use one of the following types:\
+                    {VALIDATE_DATA_FUNCTIONS.keys()}")
+        
         entityset = _create_entityset(dfs, es_type, custom_kwargs_mapping)
 
         # perform signal processing
@@ -438,19 +447,26 @@ class Zephyr:
         return self._entityset
 
     @guide
-    def set_entityset(self, entityset=None, es_type=None, entityset_path=None,
+    def set_entityset(self, es_type, entityset=None, entityset_path=None,
                       custom_kwargs_mapping=None):
         """Set the entityset for this Zephyr instance.
 
         Args:
+            es_type (str): The type of entityset (pi/scada/vibrations).
             entityset (featuretools.EntitySet, optional): An existing entityset to use.
-            es_type (str, optional): The type of entityset (pi/scada/vibrations).
             entityset_path (str, optional): Path to a saved entityset to load.
             custom_kwargs_mapping (dict, optional): Custom keyword arguments for validation.
 
         Raises:
-            ValueError: If no entityset is provided through any of the parameters.
+            ValueError: If no entityset is provided through any of the parameters OR
+                if the entityset type is invalid OR
+                if the entityset does not follow the data input rules.
         """
+        if es_type not in VALIDATE_DATA_FUNCTIONS:
+            raise ValueError(
+                f"Invalid entityset type: {es_type}. Please use one of the following types:\
+                    {VALIDATE_DATA_FUNCTIONS.keys()}")
+
         if entityset_path is not None:
             entityset = ft.read_entityset(entityset_path)
 
