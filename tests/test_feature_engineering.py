@@ -182,7 +182,8 @@ def test_process_signals_pidata(pidata_es, transformations, aggregations):
     pd.testing.assert_frame_equal(processed, expected)
 
 
-def test_process_signals_pidata_replace(pidata_es, transformations, aggregations):
+def test_process_signals_pidata_replace(
+        pidata_es, transformations, aggregations):
     signal_dataframe_name = 'pidata'
     signal_column = 'val1'
     window_size = '1m'
@@ -248,7 +249,8 @@ def test_process_signals_scada(scada_es, transformations, aggregations):
     pd.testing.assert_frame_equal(scada_es['scada_processed'], expected)
 
 
-def test_process_signals_scada_replace(scada_es, transformations, aggregations):
+def test_process_signals_scada_replace(
+        scada_es, transformations, aggregations):
     signal_dataframe_name = 'scada'
     signal_column = 'val1'
     window_size = '1m'
