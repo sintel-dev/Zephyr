@@ -4,16 +4,11 @@ from zephyr_ml.core import GuideHandler, guide
 class DummyObject:
     def __init__(self):
         producers_and_getters = [
-            ([self.step0_key, self.step0_set], [self.step0_getter]),
-            ([self.step1_key, self.step1_set], [self.step1_getter]),
-            ([self.step2_key, self.step2_set], [self.step2_getter])
+            ([self.step0_key], [self.step0_set], [self.step0_getter]),
+            ([self.step1_key], [self.step1_set], [self.step1_getter]),
+            ([self.step2_key], [self.step2_set], [self.step2_getter])
         ]
-        set_methods = {
-            self.step0_set.__name__,
-            self.step1_set.__name__,
-            self.step2_set.__name__
-        }
-        self._guide_handler = GuideHandler(producers_and_getters, set_methods)
+        self._guide_handler = GuideHandler(producers_and_getters)
 
     @guide
     def step0_key(self):
