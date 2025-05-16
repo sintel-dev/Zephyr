@@ -87,14 +87,14 @@ class GuideHandler:
 
         if next_step >= len(self.ordered_steps):
             cur_step_name = self.or_join(self.ordered_steps[self.current_step][0])
-            LOGGER.warning((f"[GUIDE] Successfully performed {name}.\n"
+            LOGGER.warning((f"[GUIDE] DONE: {name}.\n"
                             f"\tYou have reached the end of the "
                             f"predictive engineering workflow.\n"
                             f"\tYou can call {cur_step_name} again or re-perform previous steps "
                             f"based on results."))
         else:
             next_step_name = self.or_join(self.ordered_steps[next_step][0])
-            LOGGER.warning(f"[GUIDE] Successfully performed {name}.\n"
+            LOGGER.warning(f"[GUIDE] DONE: {name}.\n"
                            f"\tYou can perform the next step by calling {next_step_name}.")
 
     def perform_producer_step(self, zephyr, method,
@@ -112,13 +112,13 @@ class GuideHandler:
                         f"step {next_step} by performing {name}.")
         else:
             from_str = (f"Performing step {next_step} with {name}.")
-        LOGGER.warning((f"[GUIDE] STALE WARNING: \n"
+        LOGGER.warning((f"[GUIDE] STALE WARNING: {name}.\n"
                         f"\t{from_str}\n"
                         f"\tThis is a forward step via a set method.\n"
                         f"\tAll previous steps' results will be considered stale."))
 
     def try_log_backwards_set_method_warning(self, name, next_step):
-        LOGGER.warning((f"[GUIDE] STALE WARNING: \n"
+        LOGGER.warning((f"[GUIDE] STALE WARNING: {name}.\n"
                         f"\tGoing from step {self.current_step} to "
                         f"step {next_step} by performing {name}.\n"
                         f"\tThis is a backwards step via a set method.\n"
@@ -133,7 +133,7 @@ class GuideHandler:
         else:
             steps_in_between_str = ""
 
-        LOGGER.warning((f"[GUIDE] STALE WARNING:\n"
+        LOGGER.warning((f"[GUIDE] STALE WARNING: {name}.\n"
                         f"\tGoing from step {self.current_step} to "
                         f"step {next_step} by performing {name}.\n"
                         f"\tThis is a backwards step via a key method.\n"
@@ -143,13 +143,14 @@ class GuideHandler:
         prod_steps_str = self.or_join(self.ordered_steps[next_step][0])
         prod_steps = f"{next_step}.{prod_steps_str}"
         latest_up_to_date = self.get_last_up_to_date(next_step)
-        LOGGER.warning((f"[GUIDE] INCONSISTENCY WARNING: Unable to perform {name} because"
+        LOGGER.warning((f"[GUIDE] INCONSISTENCY WARNING: {name}.\n"
+                        f"Unable to perform {name} because"
                         f"{prod_steps} has not been run yet.\n"
                         f"Run steps starting at or before {latest_up_to_date}."))
 
     def log_get_stale_warning(self, name, next_step):
         latest_up_to_date = self.get_last_up_to_date(next_step)
-        LOGGER.warning((f"[GUIDE] STALE WARNING: Performing {name}.\n"
+        LOGGER.warning((f"[GUIDE] STALE WARNING: {name}.\n"
                         f"This data is potentially stale.\n"
                         f"Re-run steps starting at or before {latest_up_to_date}"
                         f"to ensure data is up to date."))
@@ -217,42 +218,52 @@ class GuideHandler:
         # not up to date
         if (next_step >= self.current_step and
                 self.iterations[next_step - 1] != self.cur_iteration):
-            corr_set_method = self.or_join(self.ordered_steps[next_step][1])
             prev_step = next_step - 1
             prev_set_method = self.or_join(self.ordered_steps[prev_step][1])
             prev_key_method = self.or_join(self.ordered_steps[prev_step][0])
-            LOGGER.warning(f"[GUIDE] INCONSISTENCY WARNING:\n"
+            if next_step == len(self.ordered_steps) - 1:
+                final_text = (f"\tOtherwise, you can regenerate the data of the previous "
+                              f"step by calling {prev_key_method}, and then call {name} again.")
+            else:
+                corr_set_method = self.or_join(self.ordered_steps[next_step][1])
+                final_text = (f"\tIf you already have the data for THIS step, you can use "
+                              f"{corr_set_method} to set the data.\n"
+                              f"\tOtherwise, you can regenerate the data of the "
+                              f"previous step by calling {prev_key_method}, "
+                              f"and then call {name} again.")
+            LOGGER.warning(f"[GUIDE] INCONSISTENCY WARNING: {name}\n"
                            f"\tUnable to perform {name} because you are "
                            f"performing a key method at step {next_step} but the result of the "
                            f"previous step, step {prev_step}, is stale.\n"
                            f"\tIf you want to use the stale result or "
-                           f"already have the data for step {prev_step}, you can use the "
-                           f"corresponding set method: {prev_set_method}.\n"
-                           f"\tIf you already have the data for THIS step, you can call "
-                           f"{corr_set_method} to set the data.\n"
-                           f"\tOtherwise, you can regenerate the data of the "
-                           f"previous step by calling {prev_key_method}, "
-                           f"and then recall this method.")
+                           f"already have the data for step {prev_step}, you can use "
+                           f"{prev_set_method} to set the data.\n"
+                           f"{final_text}")
         elif (next_step < self.current_step and
               self.iterations[next_step - 1] != self.cur_iteration):
             prev_step = next_step - 1
             prev_key_method = self.or_join(self.ordered_steps[prev_step][0])
-            corr_set_method = self.or_join(self.ordered_steps[next_step][1])
             prev_set_method = self.or_join(self.ordered_steps[prev_step][1])
-            LOGGER.warning(f"[GUIDE] INCONSISTENCY WARNING:\n"
+
+            if next_step == len(self.ordered_steps) - 1:
+                final_text = (f"\tOtherwise, you can regenerate the data of the previous "
+                              f"step by calling {prev_key_method}, and then call {name} again.")
+            else:
+                corr_set_method = self.or_join(self.ordered_steps[next_step][1])
+                final_text = (f"\tIf you already have the data for THIS step, you can use "
+                              f"{corr_set_method} to set the data.\n"
+                              f"\tOtherwise, you can regenerate the data of the "
+                              f"previous step by calling {prev_key_method}, "
+                              f"and then call {name} again.")
+            LOGGER.warning(f"[GUIDE] INCONSISTENCY WARNING: {name}\n"
                            f"\tUnable to perform {name} because "
                            f"you are going backwards and starting a new iteration by "
                            f"performing a key method at step {next_step} but the result of the "
                            f"previous step, step {prev_step}, is STALE.\n"
                            f"\tIf you want to use the STALE result or "
-                           f"already have the data for step {prev_step}, you can use the "
-                           f"corresponding set method: {prev_set_method}.\n"
-                           f"\tIf you already have the data for THIS step, you can call "
-                           f"{corr_set_method} to set the data.\n"
-                           f"\tOtherwise, you can regenerate the data of the "
-                           f"previous step by calling {prev_key_method}, "
-                           f"and then recall this method."
-                           )
+                           f"already have the data for step {prev_step}, you can use "
+                           f"{prev_set_method} to set the data.\n"
+                           f"{final_text}")
 
     def try_perform_getter_step(
             self, zephyr, method, *method_args, **method_kwargs):
@@ -424,7 +435,6 @@ class Zephyr:
             raise ValueError(
                 f"Invalid entityset type: {es_type}. Please use one of the following types:\
                     {VALIDATE_DATA_FUNCTIONS.keys()}")
-        
         entityset = _create_entityset(dfs, es_type, custom_kwargs_mapping)
 
         # perform signal processing
