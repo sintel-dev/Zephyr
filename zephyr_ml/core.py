@@ -71,7 +71,7 @@ class GuideHandler:
         return latest_up_to_date
 
     def join_steps(self, step_strs):
-        return "\n".join(step_strs)
+        return "\n\t".join(step_strs)
 
     def get_steps_in_between(self, cur_step, next_step):
         step_strs = []
@@ -125,10 +125,10 @@ class GuideHandler:
                         f"\tAll other steps will be considered stale."))
 
     def try_log_backwards_key_method_warning(self, name, next_step):
-        steps_in_between = self.get_steps_in_between(next_step, self.current_step)
-        if steps_in_between > 0:
+        steps_in_between = self.get_steps_in_between(next_step, self.current_step+1)
+        if len(steps_in_between) > 0:
             steps_in_between_str = (f"\tThe following steps will be considered stale:\n"
-                                    f"{self.join_steps(steps_in_between)}")
+                                    f"\t{self.join_steps(steps_in_between)}")
         else:
             steps_in_between_str = ""
 

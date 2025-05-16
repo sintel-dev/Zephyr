@@ -166,3 +166,28 @@ def test_guide_decorator():
     # Check that the decorator routes through the guide handler
     assert obj.step0_key() == "step0_key_result"
     assert obj.step0_getter() == "step0_get_result"
+
+
+def test_backwards_key_method(caplog):
+    """Test performing key methods in backwards order and verifying state changes"""
+    obj = DummyObject()
+
+    # Complete steps 0, 1, and 2
+    obj.step0_key()
+    obj.step1_key()
+    obj.step2_key()
+
+    # Go back to step 1 with key method - should warn about steps becoming stale
+    obj.step1_key()
+    assert "[GUIDE] STALE WARNING" in caplog.text
+    assert "step 2" in caplog.text  # Should mention step 2 becoming stale
+
+    # Going back to step 0 should warn about steps 1 and 2 becoming stale
+    caplog.clear()
+    obj.step0_key()
+    assert "[GUIDE] STALE WARNING" in caplog.text
+    assert "step 1" in caplog.text
+
+    # Moving forward again should work since we're starting from step 0
+    obj.step1_key()
+    obj.step2_key()
