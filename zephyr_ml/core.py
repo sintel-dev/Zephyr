@@ -108,29 +108,33 @@ class GuideHandler:
         return res
 
     def try_log_forward_set_method_warning(self, name, next_step):
-        LOGGER.warning(
-            f"[GUIDE] STALE WARNING:  Performing step {next_step} \
-                    from step {self.current_step} \
-                    via {name}.\
-                    This is a forward step via a set method.\
-                    The current step is {self.current_step}.\
-                    All previous steps will be considered stale.")
+        if self.current_step != -1:
+            from_str = (f"Going from step {self.current_step} to "
+                        f"step {next_step} by performing {name}.")
+        else:
+            from_str = (f"Performing step {next_step} with {name}.")
+        LOGGER.warning((f"[GUIDE] STALE WARNING: \n"
+                        f"\t{from_str}\n"
+                        f"\tThis is a forward step via a set method.\n"
+                        f"\tAll previous steps will be considered stale."))
 
     def try_log_backwards_set_method_warning(self, name, next_step):
-        LOGGER.warning(f"[GUIDE] STALE WARNING: Performing step \
-                       {next_step} from step {self.current_step} \
-                       via {name}. \
-                    This is a backwards step via a set method.\
-                        All other steps will be considered stale.")
+        LOGGER.warning((f"[GUIDE] STALE WARNING: \n"
+                        f"\tGoing from step {self.current_step} to "
+                        f"step {next_step} by performing {name}.\n"
+                        f"\tThis is a backwards step via a set method.\n"
+                        f"\tAll other steps will be considered stale."))
 
     def try_log_backwards_key_method_warning(self, name, next_step):
         steps_in_between = self.join_steps(
             self.get_steps_in_between(
                 self.current_step, next_step))
-        LOGGER.warning(f"[GUIDE] STALE WARNING: Performing step {next_step} \
-                       from step {self.current_step} via {name}. \
-                    This is a backwards step via a key method.\
-                        The following steps will be considered stale:\n{steps_in_between}")
+        LOGGER.warning((f"[GUIDE] STALE WARNING:\n"
+                        f"\tGoing from step {self.current_step} to "
+                        f"step {next_step} by performing {name}.\n"
+                        f"\tThis is a backwards step via a key method.\n"
+                        f"\tThe following steps will be considered stale:\n"
+                        f"{steps_in_between}"))
 
     def log_get_inconsistent_warning(self, name, next_step):
         prod_steps_str = ' or '.join([method.__name__ for method in
