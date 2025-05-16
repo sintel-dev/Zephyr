@@ -221,32 +221,38 @@ class GuideHandler:
             prev_step = next_step - 1
             prev_set_method = self.or_join(self.ordered_steps[prev_step][1])
             prev_key_method = self.or_join(self.ordered_steps[prev_step][0])
-            LOGGER.warning(f"""[GUIDE] INCONSISTENCY WARNING:Unable\
-                           to perform {name} because you are performing a key method at
-                           step {next_step} but the result of the previous step,
-                           step {prev_step}, is STALE.
-                           If you already have the data for step {next_step},
-                            you can use the corresponding set method: {corr_set_method}.
-                           Otherwise, please perform step {prev_step} with
-                           {prev_key_method} or {prev_set_method}.""")
+            LOGGER.warning(f"[GUIDE] INCONSISTENCY WARNING:\n"
+                           f"\tUnable to perform {name} because you are performing a key method at"
+                           f"step {next_step} but the result of the previous step,"
+                           f"step {prev_step}, is stale.\n"
+                           f"\tIf you want to use the stale result or"
+                           f"already have the data for step {next_step}, you can use the"
+                           f"corresponding set method: {prev_set_method}.\n"
+                           f"\tIf you already have the data for THIS step, you can call"
+                           f"{corr_set_method} to set the data.\n"
+                           f"\tOtherwise, you can regenerate the data of the"
+                           f"previous step by calling {prev_key_method},"
+                           f"and then recall this method.")
         elif (next_step < self.current_step and
               self.iterations[next_step - 1] != self.cur_iteration):
             prev_step = next_step - 1
             prev_key_method = self.or_join(self.ordered_steps[prev_step][0])
             corr_set_method = self.or_join(self.ordered_steps[next_step][1])
-            prev_get_method = self.or_join(self.ordered_steps[prev_step][2])
             prev_set_method = self.or_join(self.ordered_steps[prev_step][1])
-            LOGGER.warning(f"""[GUIDE] INCONSISTENCY WARNING: Unable to perform {name}
-                           because you are going backwards and starting a new iteration by
-                           performing a key method at step {next_step} but the result of the
-                           previous step, step {prev_step}, is STALE.
-                           If you want to use the STALE result of the PREVIOUS step,
-                           you can call {prev_get_method} to get the data, then
-                           {prev_set_method} to set the data, and then recall this method.
-                           If you want to regenerate the data of the PREVIOUS step,
-                           please call {prev_key_method}, and then recall this method.
-                           If you already have the data for THIS step, you can call
-                           {corr_set_method} to set the data.""")
+            LOGGER.warning(f"[GUIDE] INCONSISTENCY WARNING:\n"
+                           f"\tUnable to perform {name} because"
+                           f"you are going backwards and starting a new iteration by"
+                           f"performing a key method at step {next_step} but the result of the"
+                           f"previous step, step {prev_step}, is STALE.\n"
+                           f"\tIf you want to use the STALE result or"
+                           f"already have the data for step {next_step}, you can use the"
+                           f"corresponding set method: {prev_set_method}.\n"
+                           f"\tIf you already have the data for THIS step, you can call"
+                           f"{corr_set_method} to set the data.\n"
+                           f"\tOtherwise, you can regenerate the data of the"
+                           f"previous step by calling {prev_key_method},"
+                           f"and then recall this method."
+                           )
 
     def try_perform_getter_step(
             self, zephyr, method, *method_args, **method_kwargs):
