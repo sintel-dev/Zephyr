@@ -130,7 +130,8 @@ class Zephyr:
         if visual and outputs is not None:
             return dict(zip(visual_names, outputs))
 
-    def predict(self, X: pd.DataFrame, visual: bool = False, **kwargs) -> pd.Series:
+    def predict(self, X: pd.DataFrame, visual: bool = False,
+                **kwargs) -> pd.Series:
         """Predict the pipeline to the given data.
 
         Args:
@@ -155,7 +156,8 @@ class Zephyr:
 
         if visual and visual_names:
             prediction = outputs[0]
-            return prediction, dict(zip(visual_names, outputs[-len(visual_names):]))
+            return prediction, dict(
+                zip(visual_names, outputs[-len(visual_names):]))
 
         return outputs
 
