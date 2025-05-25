@@ -21,8 +21,8 @@ DEFAULT_METRICS = [
     "sklearn.metrics.precision_score",
     "sklearn.metrics.f1_score",
     "sklearn.metrics.recall_score",
-    "zephyr_ml.primitives.postprocessing.confusion_matrix",
-    "zephyr_ml.primitives.postprocessing.roc_auc_score_and_curve",
+    "zephyr_ml.primitives.evaluation.confusion_matrix",
+    "zephyr_ml.primitives.evaluation.roc_auc_score_and_curve",
 ]
 
 LOGGER = logging.getLogger(__name__)
