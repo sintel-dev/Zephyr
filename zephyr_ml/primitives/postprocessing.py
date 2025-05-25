@@ -82,4 +82,3 @@ class FindThreshold:
 
         binary = [1 if x else 0 for x in y_proba > self._threshold]
         return binary, self._threshold, self._scores
-
