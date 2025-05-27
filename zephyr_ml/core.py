@@ -125,7 +125,7 @@ class GuideHandler:
                         f"\tAll other steps' results will be considered stale."))
 
     def try_log_backwards_key_method_warning(self, name, next_step):
-        steps_in_between = self.get_steps_in_between(next_step, self.current_step+1)
+        steps_in_between = self.get_steps_in_between(next_step, self.current_step + 1)
         if len(steps_in_between) > 0:
             steps_in_between_str = (f"\tAny results produced by the following steps "
                                     f"will be considered stale:\n"
@@ -353,7 +353,7 @@ class Zephyr:
                 [self.get_train_test_split]),
             ([self.fit_pipeline], [self.set_fitted_pipeline], [self.get_fitted_pipeline]),
             ([self.predict, self.evaluate], [], [])
-            ]
+        ]
         self._guide_handler = GuideHandler(step_order)
 
     def GET_ENTITYSET_TYPES(self):
@@ -553,7 +553,9 @@ class Zephyr:
             AssertionError: If entityset has not been generated or set or labeling_fn is
                 not a string and not callable.
         """
-        assert self._entityset is not None, "entityset has not been set"
+
+        if self._entityset is None:
+            raise ValueError("entityset has not been set")
 
         if isinstance(labeling_fn, str):  # get predefined labeling function
             labeling_fn_map = get_labeling_functions_map()
@@ -630,6 +632,9 @@ class Zephyr:
         Returns:
             tuple: (composeml.LabelTimes, dict) The label times and metadata.
         """
+        if self._label_times is None:
+            raise ValueError("Label times have not been set"
+                             "Call generate_label_times or set_label_times first.")
         if visualize:
             cp.label_times.plots.LabelPlots(self._label_times).distribution()
         return self._label_times, self._label_times_meta
@@ -724,7 +729,20 @@ class Zephyr:
         Returns:
             tuple: (pd.DataFrame, list, featuretools.EntitySet)
                 Feature matrix, feature definitions, and the processed entityset.
+
+        Raises:
+            ValueError: If required attributes are missing.
         """
+        if self._entityset is None:
+            raise ValueError(
+                "Entityset has not been set. Call generate_entityset or "
+                "set_entityset first.")
+
+        if self._label_times is None:
+            raise ValueError(
+                "Label times have not been set. Call generate_label_times or "
+                "set_label_times first.")
+
         entityset_copy = copy.deepcopy(self._entityset)
         # perform signal processing
         if signal_dataframe_name is not None and signal_column is not None:
@@ -784,6 +802,9 @@ class Zephyr:
             tuple: (pd.DataFrame, str, list) The feature matrix, label column name,
                 and feature definitions.
         """
+        if self._feature_matrix is None:
+            raise ValueError("Feature matrix has not been generated. "
+                             "Call generate_feature_matrix or set_feature_matrix first.")
         return self._feature_matrix, self._label_col_name, self._features
 
     @guide
@@ -830,6 +851,11 @@ class Zephyr:
         Returns:
             tuple: (X_train, X_test, y_train, y_test) The split feature matrices and labels.
         """
+        if self._feature_matrix is None:
+            raise ValueError(
+                "Feature matrix has not been generated. Call generate_feature_matrix "
+                "or set_feature_matrix first.")
+
         feature_matrix = self._feature_matrix.copy()
         labels = feature_matrix.pop(self._label_col_name)
 
@@ -880,7 +906,9 @@ class Zephyr:
         """
         if (self._X_train is None or self._X_test is None or
                 self._y_train is None or self._y_test is None):
-            return None
+            raise ValueError(
+                "Train-test split has not been generated. "
+                "Call generate_train_test_split or set_train_test_split first.")
         return self._X_train, self._X_test, self._y_train, self._y_test
 
     @guide
@@ -894,8 +922,8 @@ class Zephyr:
 
     @guide
     def fit_pipeline(
-            self, pipeline="xgb_classifier", pipeline_hyperparameters=None,
-            X=None, y=None, visual=False, **kwargs):
+            self, pipeline="xgb_classifier",
+            pipeline_hyperparameters=None, visual=False, **kwargs):
         """Fit a machine learning pipeline.
 
         Args:
@@ -905,28 +933,29 @@ class Zephyr:
                 - Dictionary with pipeline specification
                 - MLPipeline instance
             pipeline_hyperparameters (dict, optional): Hyperparameters for the pipeline.
-            X (pd.DataFrame, optional): Training features. If None, uses stored training set.
-            y (array-like, optional): Training labels. If None, uses stored training labels.
             visual (bool, optional): Whether to return visualization data. Defaults to False.
             **kwargs: Additional arguments passed to the pipeline's fit method.
 
         Returns:
             dict or None: If visual=True, returns visualization data dictionary.
-        """
-        self._pipeline = self._get_mlpipeline(
-            pipeline, pipeline_hyperparameters)
 
-        if X is None:
-            X = self._X_train
-        if y is None:
-            y = self._y_train
+        Raises:
+            ValueError: If required attributes are missing.
+        """
+        if self._X_train is None or self._y_train is None:
+            raise ValueError(
+                "No training data provided. Call generate_train_test_split "
+                "or set_train_test_split first.")
+
+        self._pipeline = self._get_mlpipeline(pipeline, pipeline_hyperparameters)
 
         if visual:
             outputs_spec, visual_names = self._get_outputs_spec(False)
         else:
             outputs_spec = None
 
-        outputs = self._pipeline.fit(X, y, output_=outputs_spec, **kwargs)
+        outputs = self._pipeline.fit(X=self._X_train, y=self._y_train,
+                                     output_=outputs_spec, **kwargs)
 
         if visual and outputs is not None:
             return dict(zip(visual_names, outputs))
@@ -951,9 +980,22 @@ class Zephyr:
 
         Returns:
             array-like or tuple: Predictions, and if visual=True, also returns visualization data.
+
+        Raises:
+            ValueError: If required attributes or parameters are missing.
         """
-        if X is None:
+        if self._pipeline is None:
+            raise ValueError(
+                "No pipeline has been fitted. Call fit_pipeline or set_fitted_pipeline first.")
+
+        if X is None and self._X_test is None:
+            raise ValueError(
+                "No test data provided. Pass in test data or "
+                "call generate_train_test_split or set_train_test_split first.")
+
+        elif X is None:
             X = self._X_test
+
         if visual:
             outputs_spec, visual_names = self._get_outputs_spec()
         else:
@@ -984,9 +1026,22 @@ class Zephyr:
 
         Returns:
             dict: A dictionary mapping metric names to their computed values.
+
+        Raises:
+            ValueError: If required attributes are missing.
         """
+        if self._pipeline is None:
+            raise ValueError(
+                "No pipeline has been fitted. Call fit_pipeline or set_fitted_pipeline first.")
+
+        if (X is None and self._X_test is None) or (y is None and self._y_test is None):
+            raise ValueError(
+                "No test data provided. Pass in test data or "
+                "call generate_train_test_split or set_train_test_split first.")
+
         if X is None:
             X = self._X_test
+
         if y is None:
             y = self._y_test
 
