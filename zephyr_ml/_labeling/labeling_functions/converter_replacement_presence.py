@@ -1,4 +1,4 @@
-from zephyr_ml.labeling.utils import denormalize
+from zephyr_ml._labeling.utils import denormalize
 
 
 def converter_replacement_presence(es, column_map={}):

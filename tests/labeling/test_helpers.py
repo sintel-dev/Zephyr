@@ -2,7 +2,7 @@ import featuretools as ft
 import numpy as np
 import pandas as pd
 
-from zephyr_ml.labeling.utils import (
+from zephyr_ml._labeling.utils import (
     aggregate_by_column, categorical_presence, denormalize, greater_than, keyword_in_text,
     merge_binary_labeling_functions, total_duration)
 

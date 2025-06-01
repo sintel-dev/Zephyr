@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from zephyr_ml import _create_entityset
+from zephyr_ml._entityset import create_entityset
 
 
 @pytest.fixture
@@ -120,11 +120,11 @@ def scada_dfs(base_dfs):
 
 
 def create_pidata_entityset(pidata_dfs):
-    return _create_entityset(pidata_dfs, es_type="pidata")
+    return create_entityset(pidata_dfs, es_type="pidata")
 
 
 def create_scada_entityset(scada_dfs):
-    return _create_entityset(scada_dfs, es_type="scada")
+    return create_entityset(scada_dfs, es_type="scada")
 
 
 def test_create_pidata_missing_entities(pidata_dfs):

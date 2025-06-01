@@ -1,13 +1,13 @@
-from zephyr_ml.labeling.utils import denormalize
+from zephyr_ml._labeling.utils import denormalize
 
 
-def gearbox_replace_presence(es, column_map={}):
-    """Determines if gearbox replacement/exchange is present in stoppages.
+def brake_pad_presence(es, column_map={}):
+    """Determines if brake pad present in stoppages.
 
     Args:
         es (ft.EntitySet):
-            EntitySet of data to check gearbox replacements.
-        column_map (dict):
+            EntitySet of data to calculate total power loss across.
+        column_mapping (dict):
             Optional dictionary to update default column names to the
             actual corresponding column names in the data slice. Can contain the
             following keys:
@@ -21,11 +21,11 @@ def gearbox_replace_presence(es, column_map={}):
 
     Returns:
         label:
-            Labeling function to find gearbox replacement presence over a data slice.
+            Labeling function to find brake pad presence over a data slice.
         df:
-            Denormalized dataframe of data to get labels from.
+            Denormalized dataframe of data to get labels from
         meta:
-            Dictionary containing metadata about labeling function.
+            Dictionary containing metadata about labeling function
 
     """
     comments = column_map.get('comments_column', 'DES_COMMENTS')
@@ -33,10 +33,11 @@ def gearbox_replace_presence(es, column_map={}):
     time_index = column_map.get('time_index_column', 'DAT_END')
 
     def label(ds, **kwargs):
-        label_strings = ['Gearbox replace*', 'Gearbox exchange']
-        comments_lower = ds[comments].fillna('').str.lower()
-        f = any(comments_lower.str.contains(
-            '|'.join(label_strings), case=False))
+        a = ds[comments]
+        a = a.fillna('')
+        a = a.str.lower()
+        f = any(a.apply(lambda d: ('brake' in d)
+                and ('pad' in d) and ('yaw' not in d)))
         return f
 
     meta = {

@@ -2,7 +2,7 @@ from itertools import chain
 
 import featuretools as ft
 
-from zephyr_ml.metadata import get_mapped_kwargs
+from zephyr_ml._metadata import get_mapped_kwargs
 
 
 def _validate_data(dfs, es_type, es_kwargs):
@@ -159,7 +159,7 @@ VALIDATE_DATA_FUNCTIONS = {
 }
 
 
-def _create_entityset(entities, es_type, new_kwargs_mapping=None):
+def create_entityset(entities, es_type, new_kwargs_mapping=None):
 
     validate_func = VALIDATE_DATA_FUNCTIONS[es_type]
     es_kwargs = validate_func(entities, new_kwargs_mapping)
