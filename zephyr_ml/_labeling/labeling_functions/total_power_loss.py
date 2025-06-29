@@ -1,5 +1,5 @@
 
-from zephyr_ml.labeling.utils import denormalize
+from zephyr_ml._labeling.utils import denormalize
 
 
 def total_power_loss(es, column_map={}):

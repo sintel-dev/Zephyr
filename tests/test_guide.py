@@ -1,4 +1,4 @@
-from zephyr_ml.core import GuideHandler, guide
+from zephyr_ml._guide_handler import GuideHandler, guide
 
 
 class DummyObject:

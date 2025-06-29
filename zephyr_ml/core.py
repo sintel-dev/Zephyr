@@ -2,7 +2,6 @@ import copy
 import json
 import logging
 import os
-from functools import wraps
 from inspect import getfullargspec
 
 import composeml as cp
@@ -12,311 +11,21 @@ import pandas as pd
 from mlblocks import MLBlock, MLPipeline
 from sklearn.model_selection import train_test_split
 
-from zephyr_ml.entityset import VALIDATE_DATA_FUNCTIONS, _create_entityset
-from zephyr_ml.feature_engineering import process_signals
-from zephyr_ml.labeling import get_labeling_functions, get_labeling_functions_map
+from zephyr_ml._entityset import VALIDATE_DATA_FUNCTIONS, create_entityset
+from zephyr_ml._feature_engineering import process_signals
+from zephyr_ml._guide_handler import GuideHandler, guide
+from zephyr_ml._labeling import get_labeling_functions, get_labeling_functions_map
 
 DEFAULT_METRICS = [
     "sklearn.metrics.accuracy_score",
     "sklearn.metrics.precision_score",
     "sklearn.metrics.f1_score",
     "sklearn.metrics.recall_score",
-    "zephyr_ml.primitives.postprocessing.confusion_matrix",
-    "zephyr_ml.primitives.postprocessing.roc_auc_score_and_curve",
+    "zephyr_ml.primitives.evaluation.confusion_matrix",
+    "zephyr_ml.primitives.evaluation.roc_auc_score_and_curve",
 ]
 
 LOGGER = logging.getLogger(__name__)
-
-
-class GuideHandler:
-
-    def __init__(self, ordered_steps):
-        self.cur_iteration = 0
-        self.current_step = -1
-        self.start_point = -1
-        self.ordered_steps = ordered_steps
-        self.set_methods = set()
-
-        self.producer_to_step_map = {}
-        self.getter_to_step_map = {}
-
-        self.iterations = []
-        for idx, (keys, sets, gets) in enumerate(self.ordered_steps):
-            self.iterations.append(-1)
-
-            for prod in keys:
-                self.producer_to_step_map[prod.__name__] = idx
-            for prod in sets:
-                self.producer_to_step_map[prod.__name__] = idx
-                self.set_methods.add(prod.__name__)
-
-            for get in gets:
-                self.getter_to_step_map[get.__name__] = idx
-
-    def or_join(self, methods):
-        return " or ".join([method.__name__ for method in methods])
-
-    def get_get_steps_in_between(self, cur_step, next_step):
-        step_strs = []
-        for step in range(cur_step + 1, next_step):
-            step_strs.append(
-                f"{step} {self.or_join(self.ordered_steps[step][2])}")
-        return step_strs
-
-    def get_last_up_to_date(self, next_step):
-        latest_up_to_date = 0
-        for step in range(next_step):
-            if self.iterations[step] == self.cur_iteration:
-                latest_up_to_date = step
-        return latest_up_to_date
-
-    def join_steps(self, step_strs):
-        return "\n\t".join(step_strs)
-
-    def get_steps_in_between(self, cur_step, next_step):
-        step_strs = []
-        for step in range(cur_step + 1, next_step):
-            option_strs = []
-            option_strs.extend(self.ordered_steps[step][0])
-            option_strs.extend(self.ordered_steps[step][1])
-            step_strs.append(f"{step}. {self.or_join(option_strs)}")
-        return step_strs
-
-    def log_next_producer_step(self, name):
-        next_step = self.current_step + 1
-
-        if next_step >= len(self.ordered_steps):
-            cur_step_name = self.or_join(self.ordered_steps[self.current_step][0])
-            LOGGER.warning((f"[GUIDE] DONE: {name}.\n"
-                            f"\tYou have reached the end of the "
-                            f"predictive engineering workflow.\n"
-                            f"\tYou can call {cur_step_name} again or re-perform previous steps "
-                            f"based on results."))
-        else:
-            next_step_name = self.or_join(self.ordered_steps[next_step][0])
-            LOGGER.warning(f"[GUIDE] DONE: {name}.\n"
-                           f"\tYou can perform the next step by calling {next_step_name}.")
-
-    def perform_producer_step(self, zephyr, method,
-                              *method_args, **method_kwargs):
-        step_num = self.producer_to_step_map[method.__name__]
-        res = method(zephyr, *method_args, **method_kwargs)
-        self.current_step = step_num
-        self.iterations[step_num] = self.cur_iteration
-        self.log_next_producer_step(method.__name__)
-        return res
-
-    def try_log_forward_set_method_warning(self, name, next_step):
-        if self.current_step != -1:
-            from_str = (f"Going from step {self.current_step} to "
-                        f"step {next_step} by performing {name}.")
-        else:
-            from_str = (f"Performing step {next_step} with {name}.")
-        LOGGER.warning((f"[GUIDE] STALE WARNING: {name}.\n"
-                        f"\t{from_str}\n"
-                        f"\tThis is a forward step via a set method.\n"
-                        f"\tAll previous steps' results will be considered stale."))
-
-    def try_log_backwards_set_method_warning(self, name, next_step):
-        LOGGER.warning((f"[GUIDE] STALE WARNING: {name}.\n"
-                        f"\tGoing from step {self.current_step} to "
-                        f"step {next_step} by performing {name}.\n"
-                        f"\tThis is a backwards step via a set method.\n"
-                        f"\tAll other steps' results will be considered stale."))
-
-    def try_log_backwards_key_method_warning(self, name, next_step):
-        steps_in_between = self.get_steps_in_between(next_step, self.current_step+1)
-        if len(steps_in_between) > 0:
-            steps_in_between_str = (f"\tAny results produced by the following steps "
-                                    f"will be considered stale:\n"
-                                    f"\t{self.join_steps(steps_in_between)}")
-        else:
-            steps_in_between_str = ""
-
-        LOGGER.warning((f"[GUIDE] STALE WARNING: {name}.\n"
-                        f"\tGoing from step {self.current_step} to "
-                        f"step {next_step} by performing {name}.\n"
-                        f"\tThis is a backwards step via a key method.\n"
-                        f"{steps_in_between_str}"))
-
-    def log_get_inconsistent_warning(self, name, next_step):
-        prod_steps_str = self.or_join(self.ordered_steps[next_step][0])
-        prod_steps = f"{next_step}.{prod_steps_str}"
-        latest_up_to_date = self.get_last_up_to_date(next_step)
-        LOGGER.warning((f"[GUIDE] INCONSISTENCY WARNING: {name}.\n"
-                        f"Unable to perform {name} because"
-                        f"{prod_steps} has not been run yet.\n"
-                        f"Run steps starting at or before {latest_up_to_date}."))
-
-    def log_get_stale_warning(self, name, next_step):
-        latest_up_to_date = self.get_last_up_to_date(next_step)
-        LOGGER.warning((f"[GUIDE] STALE WARNING: {name}.\n"
-                        f"This data is potentially stale.\n"
-                        f"Re-run steps starting at or before {latest_up_to_date}"
-                        f"to ensure data is up to date."))
-
-    # tries to perform step if possible -> warns that data might be stale
-
-    def try_perform_forward_producer_step(
-            self, zephyr, method, *method_args, **method_kwargs):
-        name = method.__name__
-        next_step = self.producer_to_step_map[name]
-        if name in self.set_methods:  # set method will update start point and start new iteration
-            self.try_log_forward_set_method_warning(name, next_step)
-            self.start_point = next_step
-            self.cur_iteration += 1
-        # next_step == 0, set method (already warned), or previous step is up
-        # to term
-        res = self.perform_producer_step(
-            zephyr, method, *method_args, **method_kwargs)
-        return res
-
-    def try_perform_backward_producer_step(
-            self, zephyr, method, *method_args, **method_kwargs):
-        name = method.__name__
-        next_step = self.producer_to_step_map[name]
-        # starting new iteration
-        self.cur_iteration += 1
-        if next_step == 0 or name in self.set_methods:
-            self.start_point = next_step
-        else:  # key method
-            # mark everything from start point to next step as current term
-            for i in range(self.start_point, next_step):
-                if self.iterations[i] != -1:
-                    self.iterations[i] = self.cur_iteration
-
-        if name in self.set_methods:
-            self.try_log_backwards_set_method_warning(name, next_step)
-        else:
-            self.try_log_backwards_key_method_warning(name, next_step)
-
-        res = self.perform_producer_step(
-            zephyr, method, *method_args, **method_kwargs)
-
-        return res
-
-    def try_perform_producer_step(
-            self, zephyr, method, *method_args, **method_kwargs):
-        name = method.__name__
-        next_step = self.producer_to_step_map[name]
-        if next_step >= self.current_step:
-            res = self.try_perform_forward_producer_step(
-                zephyr, method, *method_args, **method_kwargs)
-            return res
-        else:
-            res = self.try_perform_backward_producer_step(
-                zephyr, method, *method_args, **method_kwargs)
-            return res
-
-    # dont update current step or terms
-
-    def try_perform_inconsistent_producer_step(  # add using stale and overwriting
-            self, zephyr, method, *method_args, **method_kwargs):
-        name = method.__name__
-        next_step = self.producer_to_step_map[name]
-        # inconsistent forward step: performing key method but previous step is
-        # not up to date
-        if (next_step >= self.current_step and
-                self.iterations[next_step - 1] != self.cur_iteration):
-            prev_step = next_step - 1
-            prev_set_method = self.or_join(self.ordered_steps[prev_step][1])
-            prev_key_method = self.or_join(self.ordered_steps[prev_step][0])
-            if next_step == len(self.ordered_steps) - 1:
-                final_text = (f"\tOtherwise, you can regenerate the data of the previous "
-                              f"step by calling {prev_key_method}, and then call {name} again.")
-            else:
-                corr_set_method = self.or_join(self.ordered_steps[next_step][1])
-                final_text = (f"\tIf you already have the data for THIS step, you can use "
-                              f"{corr_set_method} to set the data.\n"
-                              f"\tOtherwise, you can regenerate the data of the "
-                              f"previous step by calling {prev_key_method}, "
-                              f"and then call {name} again.")
-            LOGGER.warning(f"[GUIDE] INCONSISTENCY WARNING: {name}\n"
-                           f"\tUnable to perform {name} because you are "
-                           f"performing a key method at step {next_step} but the result of the "
-                           f"previous step, step {prev_step}, is stale.\n"
-                           f"\tIf you want to use the stale result or "
-                           f"already have the data for step {prev_step}, you can use "
-                           f"{prev_set_method} to set the data.\n"
-                           f"{final_text}")
-        elif (next_step < self.current_step and
-              self.iterations[next_step - 1] != self.cur_iteration):
-            prev_step = next_step - 1
-            prev_key_method = self.or_join(self.ordered_steps[prev_step][0])
-            prev_set_method = self.or_join(self.ordered_steps[prev_step][1])
-
-            if next_step == len(self.ordered_steps) - 1:
-                final_text = (f"\tOtherwise, you can regenerate the data of the previous "
-                              f"step by calling {prev_key_method}, and then call {name} again.")
-            else:
-                corr_set_method = self.or_join(self.ordered_steps[next_step][1])
-                final_text = (f"\tIf you already have the data for THIS step, you can use "
-                              f"{corr_set_method} to set the data.\n"
-                              f"\tOtherwise, you can regenerate the data of the "
-                              f"previous step by calling {prev_key_method}, "
-                              f"and then call {name} again.")
-            LOGGER.warning(f"[GUIDE] INCONSISTENCY WARNING: {name}\n"
-                           f"\tUnable to perform {name} because "
-                           f"you are going backwards and starting a new iteration by "
-                           f"performing a key method at step {next_step} but the result of the "
-                           f"previous step, step {prev_step}, is STALE.\n"
-                           f"\tIf you want to use the STALE result or "
-                           f"already have the data for step {prev_step}, you can use "
-                           f"{prev_set_method} to set the data.\n"
-                           f"{final_text}")
-
-    def try_perform_getter_step(
-            self, zephyr, method, *method_args, **method_kwargs):
-        name = method.__name__
-        # either inconsistent, stale, or up to date
-        step_num = self.getter_to_step_map[name]
-        step_iteration = self.iterations[step_num]
-        if step_iteration == -1:
-            self.log_get_inconsistent_warning(name, step_num)
-        elif step_iteration == self.cur_iteration:
-            res = method(zephyr, *method_args, **method_kwargs)
-            return res
-        else:
-            self.log_get_stale_warning(name, step_num)
-            res = method(zephyr, *method_args, **method_kwargs)
-            return res
-
-    def guide_step(self, zephyr, method, *method_args, **method_kwargs):
-        method_name = method.__name__
-        if method_name in self.producer_to_step_map:
-            # up-todate
-            next_step = self.producer_to_step_map[method_name]
-            if (next_step == 0 or  # 0 step always valid, starting new iteration
-                # set method always valid, but will update start point and
-                # start new iteration
-                method_name in self.set_methods or
-                    # key method valid if previous step is up to date
-                    self.iterations[next_step - 1] == self.cur_iteration):
-                # forward step only valid if set method or key method w/ no
-                # skips
-                res = self.try_perform_producer_step(
-                    zephyr, method, *method_args, **method_kwargs)
-                return res
-            else:  # stale or inconsistent
-                res = self.try_perform_inconsistent_producer_step(
-                    zephyr, method, *method_args, **method_kwargs)
-                return res
-        elif method_name in self.getter_to_step_map:
-            res = self.try_perform_getter_step(
-                zephyr, method, *method_args, **method_kwargs)
-            return res
-        else:
-            print(f"Method {method_name} does not need to be wrapped")
-
-
-def guide(method):
-
-    @wraps(method)
-    def guided_step(instance, *method_args, **method_kwargs):
-        return instance._guide_handler.guide_step(
-            instance, method, *method_args, **method_kwargs)
-
-    return guided_step
 
 
 class Zephyr:
@@ -353,7 +62,7 @@ class Zephyr:
                 [self.get_train_test_split]),
             ([self.fit_pipeline], [self.set_fitted_pipeline], [self.get_fitted_pipeline]),
             ([self.predict, self.evaluate], [], [])
-            ]
+        ]
         self._guide_handler = GuideHandler(step_order)
 
     def GET_ENTITYSET_TYPES(self):
@@ -435,7 +144,7 @@ class Zephyr:
             raise ValueError(
                 f"Invalid entityset type: {es_type}. Please use one of the following types:\
                     {VALIDATE_DATA_FUNCTIONS.keys()}")
-        entityset = _create_entityset(dfs, es_type, custom_kwargs_mapping)
+        entityset = create_entityset(dfs, es_type, custom_kwargs_mapping)
 
         # perform signal processing
         if signal_dataframe_name is not None and signal_column is not None:
@@ -553,7 +262,9 @@ class Zephyr:
             AssertionError: If entityset has not been generated or set or labeling_fn is
                 not a string and not callable.
         """
-        assert self._entityset is not None, "entityset has not been set"
+
+        if self._entityset is None:
+            raise ValueError("entityset has not been set")
 
         if isinstance(labeling_fn, str):  # get predefined labeling function
             labeling_fn_map = get_labeling_functions_map()
@@ -630,6 +341,9 @@ class Zephyr:
         Returns:
             tuple: (composeml.LabelTimes, dict) The label times and metadata.
         """
+        if self._label_times is None:
+            raise ValueError("Label times have not been set"
+                             "Call generate_label_times or set_label_times first.")
         if visualize:
             cp.label_times.plots.LabelPlots(self._label_times).distribution()
         return self._label_times, self._label_times_meta
@@ -724,7 +438,20 @@ class Zephyr:
         Returns:
             tuple: (pd.DataFrame, list, featuretools.EntitySet)
                 Feature matrix, feature definitions, and the processed entityset.
+
+        Raises:
+            ValueError: If required attributes are missing.
         """
+        if self._entityset is None:
+            raise ValueError(
+                "Entityset has not been set. Call generate_entityset or "
+                "set_entityset first.")
+
+        if self._label_times is None:
+            raise ValueError(
+                "Label times have not been set. Call generate_label_times or "
+                "set_label_times first.")
+
         entityset_copy = copy.deepcopy(self._entityset)
         # perform signal processing
         if signal_dataframe_name is not None and signal_column is not None:
@@ -784,6 +511,9 @@ class Zephyr:
             tuple: (pd.DataFrame, str, list) The feature matrix, label column name,
                 and feature definitions.
         """
+        if self._feature_matrix is None:
+            raise ValueError("Feature matrix has not been generated. "
+                             "Call generate_feature_matrix or set_feature_matrix first.")
         return self._feature_matrix, self._label_col_name, self._features
 
     @guide
@@ -830,6 +560,11 @@ class Zephyr:
         Returns:
             tuple: (X_train, X_test, y_train, y_test) The split feature matrices and labels.
         """
+        if self._feature_matrix is None:
+            raise ValueError(
+                "Feature matrix has not been generated. Call generate_feature_matrix "
+                "or set_feature_matrix first.")
+
         feature_matrix = self._feature_matrix.copy()
         labels = feature_matrix.pop(self._label_col_name)
 
@@ -880,7 +615,9 @@ class Zephyr:
         """
         if (self._X_train is None or self._X_test is None or
                 self._y_train is None or self._y_test is None):
-            return None
+            raise ValueError(
+                "Train-test split has not been generated. "
+                "Call generate_train_test_split or set_train_test_split first.")
         return self._X_train, self._X_test, self._y_train, self._y_test
 
     @guide
@@ -894,8 +631,8 @@ class Zephyr:
 
     @guide
     def fit_pipeline(
-            self, pipeline="xgb_classifier", pipeline_hyperparameters=None,
-            X=None, y=None, visual=False, **kwargs):
+            self, pipeline="xgb_classifier",
+            pipeline_hyperparameters=None, visual=False, **kwargs):
         """Fit a machine learning pipeline.
 
         Args:
@@ -905,28 +642,29 @@ class Zephyr:
                 - Dictionary with pipeline specification
                 - MLPipeline instance
             pipeline_hyperparameters (dict, optional): Hyperparameters for the pipeline.
-            X (pd.DataFrame, optional): Training features. If None, uses stored training set.
-            y (array-like, optional): Training labels. If None, uses stored training labels.
             visual (bool, optional): Whether to return visualization data. Defaults to False.
             **kwargs: Additional arguments passed to the pipeline's fit method.
 
         Returns:
             dict or None: If visual=True, returns visualization data dictionary.
-        """
-        self._pipeline = self._get_mlpipeline(
-            pipeline, pipeline_hyperparameters)
 
-        if X is None:
-            X = self._X_train
-        if y is None:
-            y = self._y_train
+        Raises:
+            ValueError: If required attributes are missing.
+        """
+        if self._X_train is None or self._y_train is None:
+            raise ValueError(
+                "No training data provided. Call generate_train_test_split "
+                "or set_train_test_split first.")
+
+        self._pipeline = self._get_mlpipeline(pipeline, pipeline_hyperparameters)
 
         if visual:
             outputs_spec, visual_names = self._get_outputs_spec(False)
         else:
             outputs_spec = None
 
-        outputs = self._pipeline.fit(X, y, output_=outputs_spec, **kwargs)
+        outputs = self._pipeline.fit(X=self._X_train, y=self._y_train,
+                                     output_=outputs_spec, **kwargs)
 
         if visual and outputs is not None:
             return dict(zip(visual_names, outputs))
@@ -951,9 +689,22 @@ class Zephyr:
 
         Returns:
             array-like or tuple: Predictions, and if visual=True, also returns visualization data.
+
+        Raises:
+            ValueError: If required attributes or parameters are missing.
         """
-        if X is None:
+        if self._pipeline is None:
+            raise ValueError(
+                "No pipeline has been fitted. Call fit_pipeline or set_fitted_pipeline first.")
+
+        if X is None and self._X_test is None:
+            raise ValueError(
+                "No test data provided. Pass in test data or "
+                "call generate_train_test_split or set_train_test_split first.")
+
+        elif X is None:
             X = self._X_test
+
         if visual:
             outputs_spec, visual_names = self._get_outputs_spec()
         else:
@@ -984,9 +735,22 @@ class Zephyr:
 
         Returns:
             dict: A dictionary mapping metric names to their computed values.
+
+        Raises:
+            ValueError: If required attributes are missing.
         """
+        if self._pipeline is None:
+            raise ValueError(
+                "No pipeline has been fitted. Call fit_pipeline or set_fitted_pipeline first.")
+
+        if (X is None and self._X_test is None) or (y is None and self._y_test is None):
+            raise ValueError(
+                "No test data provided. Pass in test data or "
+                "call generate_train_test_split or set_train_test_split first.")
+
         if X is None:
             X = self._X_test
+
         if y is None:
             y = self._y_test
 

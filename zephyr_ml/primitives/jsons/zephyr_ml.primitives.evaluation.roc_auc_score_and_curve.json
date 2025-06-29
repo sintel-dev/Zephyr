@@ -1,12 +1,12 @@
 {
-  "name": "zephyr_ml.primitives.postprocessing.confusion_matrix",
+  "name": "zephyr_ml.primitives.evaluation.roc_auc_score_and_curve",
   "contributors": ["Raymond Pan <rpan@mit.edu>"],
-  "description": "Create and plot confusion matrix.",
+  "description": "Calculate ROC AUC score and plot curve.",
   "classifiers": {
     "type": "helper"
   },
   "modalities": [],
-  "primitive": "zephyr_ml.primitives.postprocessing.confusion_matrix",
+  "primitive": "zephyr_ml.primitives.evaluation.roc_auc_score_and_curve",
   "produce": {
     "args": [
       {
@@ -14,14 +14,14 @@
         "type": "ndarray"
       },
       {
-        "name": "y_pred",
+        "name": "y_proba",
         "type": "ndarray"
       }
     ],
     "output": [
       {
-        "name": "confusion_matrix",
-        "type": "ndarray"
+        "name": "score",
+        "type": "float"
       },
       {
         "name": "figure",
@@ -32,17 +32,17 @@
 
   "hyperparameters": {
     "fixed": {
-      "labels": {
-        "type": "ndarray",
+      "pos_label": {
+        "type": "int, float, bool or str",
         "default": null
       },
       "sample_weight": {
         "type": "ndarray",
         "default": null
       },
-      "normalize": {
-        "type": "str",
-        "default": null
+      "drop_intermediate": {
+        "type": "bool",
+        "default": true
       }
     }
   }

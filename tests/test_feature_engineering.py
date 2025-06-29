@@ -1,8 +1,8 @@
 import pandas as pd
 import pytest
 
-from zephyr_ml import _create_entityset
-from zephyr_ml.feature_engineering import process_signals
+from zephyr_ml._entityset import create_entityset
+from zephyr_ml._feature_engineering import process_signals
 
 
 @pytest.fixture
@@ -122,12 +122,12 @@ def scada_dfs(base_dfs):
 
 @pytest.fixture
 def pidata_es(pidata_dfs):
-    return _create_entityset(pidata_dfs, "pidata")
+    return create_entityset(pidata_dfs, "pidata")
 
 
 @pytest.fixture
 def scada_es(scada_dfs):
-    return _create_entityset(scada_dfs, "scada")
+    return create_entityset(scada_dfs, "scada")
 
 
 @pytest.fixture
@@ -153,8 +153,8 @@ def test_process_signals_pidata(pidata_es, transformations, aggregations):
     replace_dataframe = False
     before = pidata_es['pidata'].copy()
 
-    process_signals(pidata_es, signal_dataframe_name, signal_column, transformations, aggregations,
-                    window_size, replace_dataframe)
+    process_signals(pidata_es, signal_dataframe_name, signal_column, transformations,
+                    aggregations, window_size, replace_dataframe)
 
     processed = pidata_es['pidata_processed'].copy()
     after = pidata_es['pidata'].copy()
@@ -189,8 +189,8 @@ def test_process_signals_pidata_replace(
     window_size = '1m'
     replace_dataframe = True
 
-    process_signals(pidata_es, signal_dataframe_name, signal_column, transformations, aggregations,
-                    window_size, replace_dataframe)
+    process_signals(pidata_es, signal_dataframe_name, signal_column, transformations,
+                    aggregations, window_size, replace_dataframe)
 
     processed = pidata_es['pidata'].copy()
 
@@ -224,8 +224,8 @@ def test_process_signals_scada(scada_es, transformations, aggregations):
     replace_dataframe = False
     before = scada_es['scada'].copy()
 
-    process_signals(scada_es, signal_dataframe_name, signal_column, transformations, aggregations,
-                    window_size, replace_dataframe)
+    process_signals(scada_es, signal_dataframe_name, signal_column, transformations,
+                    aggregations, window_size, replace_dataframe)
 
     expected = pd.DataFrame({
         "_index": [0, 1, 2],
@@ -256,8 +256,8 @@ def test_process_signals_scada_replace(
     window_size = '1m'
     replace_dataframe = True
 
-    process_signals(scada_es, signal_dataframe_name, signal_column, transformations, aggregations,
-                    window_size, replace_dataframe)
+    process_signals(scada_es, signal_dataframe_name, signal_column, transformations,
+                    aggregations, window_size, replace_dataframe)
 
     expected = pd.DataFrame({
         "_index": [0, 1, 2],

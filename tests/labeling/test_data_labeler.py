@@ -2,7 +2,7 @@ from unittest.mock import Mock
 
 import featuretools as ft
 
-from zephyr_ml.labeling import DataLabeler
+from zephyr_ml._labeling.data_labeler import DataLabeler
 
 
 class TestDataLabeler:

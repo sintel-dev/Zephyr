@@ -1,6 +1,6 @@
 import pytest
 
-from zephyr_ml.metadata import DEFAULT_ES_KWARGS, DEFAULT_ES_TYPE_KWARGS, get_mapped_kwargs
+from zephyr_ml._metadata import DEFAULT_ES_KWARGS, DEFAULT_ES_TYPE_KWARGS, get_mapped_kwargs
 
 
 def test_default_scada_mapped_kwargs():
