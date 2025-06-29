@@ -11,10 +11,10 @@ import pandas as pd
 from mlblocks import MLBlock, MLPipeline
 from sklearn.model_selection import train_test_split
 
-from zephyr_ml._entityset import create_entityset, VALIDATE_DATA_FUNCTIONS
+from zephyr_ml._entityset import VALIDATE_DATA_FUNCTIONS, create_entityset
 from zephyr_ml._feature_engineering import process_signals
+from zephyr_ml._guide_handler import GuideHandler, guide
 from zephyr_ml._labeling import get_labeling_functions, get_labeling_functions_map
-from zephyr_ml._guide_handler import guide, GuideHandler
 
 DEFAULT_METRICS = [
     "sklearn.metrics.accuracy_score",
